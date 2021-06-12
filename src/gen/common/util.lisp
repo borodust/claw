@@ -121,12 +121,13 @@
     (typecase entity
       (claw.spec:foreign-pointer (if (and *recognize-strings* (%enveloped-char-p))
                                      (get-overriden-type :string)
-                                     (list :pointer (entity->cffi-type
-                                                     (%enveloped-entity)
-                                                     :qualify-records qualify-records))))
-      (claw.spec:foreign-reference `(:pointer ,(entity->cffi-type
-                                                (%enveloped-entity)
-                                                :qualify-records qualify-records)))
+                                     (list (get-overriden-type :pointer)
+                                           (entity->cffi-type (%enveloped-entity)
+                                                              :qualify-records qualify-records))))
+      (claw.spec:foreign-reference `(,(get-overriden-type :pointer)
+                                     ,(entity->cffi-type
+                                       (%enveloped-entity)
+                                       :qualify-records qualify-records)))
       (claw.spec:foreign-array (let ((dimensions (claw.spec:foreign-array-dimensions entity)))
                                  (cond
                                    ((and (= (length dimensions) 1) (%enveloped-char-p))
@@ -137,9 +138,10 @@
                                                   :qualify-records qualify-records)
                                           (apply #'* dimensions)))
                                    (t
-                                    (list :pointer (entity->cffi-type
-                                                    (%enveloped-entity)
-                                                    :qualify-records qualify-records))))))
+                                    (list (get-overriden-type :pointer)
+                                          (entity->cffi-type
+                                           (%enveloped-entity)
+                                           :qualify-records qualify-records))))))
       (claw.spec:foreign-struct (if qualify-records
                                     `(:struct ,(%lisp-name))
                                     (%lisp-name)))

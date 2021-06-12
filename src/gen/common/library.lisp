@@ -171,8 +171,12 @@
                           (eval-when (:load-toplevel :compile-toplevel :execute)
                             ,@(loop for symbol being the hash-key of *export-table*
                                     collect `(export ',symbol
-                                                     ,(gethash (package-name (symbol-package symbol))
-                                                               package-table))))
+                                                     ,(let ((package-name (package-name
+                                                                           (symbol-package symbol))))
+                                                        (if-let (provided-package
+                                                                 (gethash package-name package-table))
+                                                          provided-package
+                                                          (make-keyword package-name))))))
                           ,@(when *adapter*
                               (expand-adapter-routines *adapter* wrapper)))
            :exported-symbols (hash-table-keys *export-table*)

@@ -3,6 +3,7 @@
   (:export #:defwrapper
            #:include
            #:load-wrapper
+           #:generate-wrapper
 
            #:build-adapter
            #:initialize-adapter))

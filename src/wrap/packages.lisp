@@ -3,12 +3,14 @@
   (:export #:defwrapper
            #:include
            #:load-wrapper
+           #:generate-wrapper
 
            #:wrapper-name
            #:wrapper-options
            #:wrapper-configuration
            #:wrapper-target
            #:wrapper-entities
+           #:wrapper-always-generate
 
            #:wrapper-options-standard
 

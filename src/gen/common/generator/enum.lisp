@@ -31,7 +31,7 @@
              (let ((enum-type (claw.spec:foreign-enum-type entity)))
                (check-entity-known enum-type)
                (export-symbol name)
-               `((,(if (and *recognize-bitfields-p* (bitfieldp entity))
+               `((,(if (and *recognize-bitfields* (bitfieldp entity))
                        'cffi:defbitfield
                        'cffi:defcenum)
                   (,name ,(entity->cffi-type enum-type))

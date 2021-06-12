@@ -10,15 +10,16 @@
                   *adapter*
                   *export-table*
                   *pointer-type*
-                  *recognize-strings-p*
-                  *recognize-bitfields-p*
-                  *recognize-arrays-p*
+                  *recognize-strings*
+                  *recognize-bitfields*
+                  *recognize-arrays*
                   *use-float-features*
                   *float-features-requested*
                   *inline-functions*
                   *override-table*
                   *entities*
-                  *adapted-function-table*))
+                  *adapted-function-table*
+                  *always-generate-adapter*))
 
 (defvar *qualify-records* t)
 
@@ -118,7 +119,7 @@
                                      (claw.spec:foreign-entity-id entity)
                                      full-name))))))
     (typecase entity
-      (claw.spec:foreign-pointer (if (and *recognize-strings-p* (%enveloped-char-p))
+      (claw.spec:foreign-pointer (if (and *recognize-strings* (%enveloped-char-p))
                                      (get-overriden-type :string)
                                      (list :pointer (entity->cffi-type
                                                      (%enveloped-entity)

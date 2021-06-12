@@ -164,7 +164,7 @@
 
 (defun %adapter-needs-rebuilding-p (this)
   (or (not (probe-file (adapter-file-of this)))
-      (member :claw-regen-adapter *features*)))
+      *always-generate-adapter*))
 
 
 ;;;

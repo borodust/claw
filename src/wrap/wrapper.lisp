@@ -1,11 +1,16 @@
 (cl:in-package :claw.wrapper)
 
+(declaim (special *always-generate*))
 
 (defvar *wrapper-registry* (make-hash-table :test 'equal))
 
 
+(defun sanitize-wrapper-name (name)
+  (make-keyword (uiop:standard-case-symbol-name name)))
+
+
 (defun register-wrapper (name configuration)
-  (setf (gethash name *wrapper-registry*) configuration))
+  (setf (gethash (sanitize-wrapper-name name) *wrapper-registry*) configuration))
 
 
 (defun generate-default-header-name (symbol)
@@ -85,12 +90,10 @@
                                   bindings-system))
              (bindings-path (map-path (or bindings-path "bindings/")))
              (asd-path (map-path (or asd-path
-                                     (merge-pathnames
-                                      (substitute
-                                       #\- #\/
-                                       (format nil "~(~A~).asd"
-                                               bindings-system))
-                                      bindings-path)))))
+                                     (substitute
+                                      #\- #\/
+                                      (format nil "~(~A~).asd"
+                                              bindings-system))))))
         (make-persistent-options :asd-path asd-path
                                  :bindings-path bindings-path
                                  :bindings-system bindings-system
@@ -154,7 +157,8 @@
   options
   configuration
   target
-  entities)
+  entities
+  (always-generate nil))
 
 
 (defun merge-wrapper-pathname (pathname wrapper)
@@ -273,14 +277,16 @@
                                        (:c :claw/cffi)
                                        (:c++ :claw/iffi)))
         for entities = (foreign-library-entities library)
-        do (setf (gethash triple table) (generate-bindings selected-generator
-                                                           selected-language
-                                                           (make-wrapper :name name
-                                                                         :options selected-opts
-                                                                         :configuration configuration
-                                                                         :entities entities
-                                                                         :target triple)
-                                                           configuration))
+        do (setf (gethash triple table) (generate-bindings
+                                         selected-generator
+                                         selected-language
+                                         (make-wrapper :name name
+                                                       :options selected-opts
+                                                       :configuration configuration
+                                                       :entities entities
+                                                       :target triple
+                                                       :always-generate *always-generate*)
+                                         configuration))
         finally (return table)))
 
 
@@ -323,41 +329,43 @@
                      (eq t features)
                      (uiop:featurep features))
               do (setf selected-target (%bindings-file triple))
-            do (push (cons features triple) feature-targets)
-               (push (bindings-required-systems bindings) required-systems)
-               (with-open-file (out bindings-file
-                                    :direction :output
-                                    :external-format :utf-8
-                                    :if-exists :supersede)
-                 (let ((*print-pretty* t)
-                       (*print-case* :downcase)
-                       (*print-circle* nil)
-                       (*package* (find-package :%claw.wrapper.pristine)))
-                   (flet ((print-define-package (package &rest use)
-                            (format out "(uiop:define-package ")
-                            (prin1 package out)
-                            (format out " ")
-                            (prin1 `(:use ,@use) out)
-                            (format out ")")))
-                     (loop for package in (bindings-required-packages bindings)
-                           do (print-define-package package)
-                              (terpri out))
-                     (print-define-package generated-package-name :cl)
-                     (terpri out)
-                     (prin1 `(cl:in-package ,generated-package-name) out)
-                     (fresh-line out)
-                     (terpri out))
-                   (let ((*package* (find-package :%claw.wrapper.cl))
-                         (symbols (unexport-package-symbols (bindings-required-packages bindings))))
-                     (unwind-protect
-                          (progn
-                            (unexport-bindings bindings)
-                            (loop for binding in (bindings-definition bindings)
-                                  do (prin1 binding out)
-                                     (fresh-line out)
-                                     (terpri out)))
-                       (reexport-package-symbols symbols)
-                       (reexport-bindings bindings)))))))
+            when (or *always-generate*
+                     (not (probe-file bindings-file)))
+              do (push (cons features triple) feature-targets)
+                 (push (bindings-required-systems bindings) required-systems)
+                 (with-open-file (out bindings-file
+                                      :direction :output
+                                      :external-format :utf-8
+                                      :if-exists :supersede)
+                   (let ((*print-pretty* t)
+                         (*print-case* :downcase)
+                         (*print-circle* nil)
+                         (*package* (find-package :%claw.wrapper.pristine)))
+                     (flet ((print-define-package (package &rest use)
+                              (format out "(uiop:define-package ")
+                              (prin1 package out)
+                              (format out " ")
+                              (prin1 `(:use ,@use) out)
+                              (format out ")")))
+                       (loop for package in (bindings-required-packages bindings)
+                             do (print-define-package package)
+                                (terpri out))
+                       (print-define-package generated-package-name :cl)
+                       (terpri out)
+                       (prin1 `(cl:in-package ,generated-package-name) out)
+                       (fresh-line out)
+                       (terpri out))
+                     (let ((*package* (find-package :%claw.wrapper.cl))
+                           (symbols (unexport-package-symbols (bindings-required-packages bindings))))
+                       (unwind-protect
+                            (progn
+                              (unexport-bindings bindings)
+                              (loop for binding in (bindings-definition bindings)
+                                    do (prin1 binding out)
+                                       (fresh-line out)
+                                       (terpri out)))
+                         (reexport-package-symbols symbols)
+                         (reexport-bindings bindings)))))))
     (values selected-target feature-targets required-systems)))
 
 
@@ -370,41 +378,44 @@
     (when (string= (namestring asd-path)
                    (namestring enough-bindings-path))
       (error "Bindings path must be a subpath of .asd directory"))
-    (ensure-directories-exist bindings-path)
-    (ensure-directories-exist asd-dir)
-    (with-open-file (out asd-path
-                         :direction :output
-                         :external-format :utf-8
-                         :if-exists :supersede)
-      (let ((*print-pretty* t)
-            (*print-case* :downcase)
-            (*print-circle* nil)
-            (*package* (find-package :cl-user)))
-        (format out ";; Generated by :claw at ")
-        (local-time:format-timestring out (local-time:now))
-        (format out "~&(asdf:defsystem #:~A" bindings-system)
-        (format out "~&  :description \"Bindings generated by ~A\"" name)
-        (format out "~&  :author \"CLAW\"")
-        (format out "~&  :license \"Public domain\"")
-        (format out "~&  :defsystem-depends-on (:trivial-features)")
-        (when required-systems
-          (format out "~&  :depends-on ")
-          (prin1 (remove-duplicates
-                  (append (list :uiop)
-                          (flatten required-systems)
-                          (persistent-options-system-depends-on persistent-opts))
-                  :test #'equal
-                  :key (lambda (name) (string-downcase (string name))))
-                 out))
-        (format out "~&  :components~&  ")
-        (prin1 (loop for (features . target) in (reverse feature-targets)
-                     collect `(:file ,(namestring (merge-pathnames target enough-bindings-path))
-                               :if-feature ,features))
-               out)
-        (format out ")")))))
+    (when (or *always-generate*
+              (not (probe-file asd-path)))
+      (ensure-directories-exist bindings-path)
+      (ensure-directories-exist asd-dir)
+      (with-open-file (out asd-path
+                           :direction :output
+                           :external-format :utf-8
+                           :if-exists :supersede)
+        (let ((*print-pretty* t)
+              (*print-case* :downcase)
+              (*print-circle* nil)
+              (*package* (find-package :cl-user)))
+          (format out ";; Generated by :claw at ")
+          (local-time:format-timestring out (local-time:now))
+          (format out "~&(asdf:defsystem #:~A" bindings-system)
+          (format out "~&  :description \"Bindings generated by ~A\"" name)
+          (format out "~&  :author \"CLAW\"")
+          (format out "~&  :license \"Public domain\"")
+          (format out "~&  :defsystem-depends-on (:trivial-features)")
+          (when required-systems
+            (format out "~&  :depends-on ")
+            (prin1 (remove-duplicates
+                    (append (list :uiop)
+                            (flatten required-systems)
+                            (persistent-options-system-depends-on persistent-opts))
+                    :test #'equal
+                    :key (lambda (name) (string-downcase (string name))))
+                   out))
+          (format out "~&  :components~&  ")
+          (prin1 (loop for (features . target) in (reverse feature-targets)
+                       collect `(:file ,(namestring (merge-pathnames target enough-bindings-path))
+                                 :if-feature ,features))
+                 out)
+          (format out ")"))))))
 
 
-(defun persist-and-load-bindings (name opts bindings-table)
+
+(defun persist-bindings-and-asd (name opts bindings-table)
   (let ((persistent-opts (wrapper-options-persistent opts)))
     (multiple-value-bind (selected-target
                           feature-targets
@@ -412,8 +423,12 @@
         (persist-bindings opts bindings-table)
       (unless (zerop (hash-table-count bindings-table))
         (persist-bindings-asd name persistent-opts feature-targets required-systems))
-      (when selected-target
-        (load selected-target)))))
+      selected-target)))
+
+
+(defun persist-and-load-bindings (name opts bindings-table)
+  (when-let (selected-target (persist-bindings-and-asd name opts bindings-table))
+    (load selected-target)))
 
 
 (defun expand-bindings (opts bindings-table)
@@ -424,19 +439,37 @@
                return (bindings-definition (gethash target bindings-table)))))
 
 
+(defun call-with-wrapper-opts (name wrapper-handler &key always-generate)
+  (let ((name (sanitize-wrapper-name name)))
+    (destructuring-bind (opts . configuration)
+        (if-let (wrapper-def (gethash name *wrapper-registry*))
+          wrapper-def
+          (error "Wrapper ~A not found" name))
+      (let* ((*always-generate* always-generate)
+             (opts (eval-opts name opts))
+             (*path-mapper* (lambda (path)
+                              (find-path path :system (wrapper-options-system opts)
+                                              :path (wrapper-options-base-path opts))))
+             (bindings-table (make-bindings-table name opts configuration)))
+        (funcall wrapper-handler name opts bindings-table)))))
+
+
+(defmacro with-wrapper-opts ((name opts bindings-table &key always-generate) wrapper-name &body body)
+  `(call-with-wrapper-opts ,wrapper-name
+                           (lambda (,name ,opts ,bindings-table)
+                             ,@body)
+                           :always-generate ,always-generate))
+
+
+(defun generate-wrapper (name)
+  (call-with-wrapper-opts name #'persist-bindings-and-asd :always-generate t))
+
+
 (defun load-wrapper (name)
-  (destructuring-bind (opts . configuration) (gethash name *wrapper-registry*)
-    (let* ((name (if (keywordp name)
-                     name
-                     (make-keyword name)))
-           (opts (eval-opts name opts))
-           (*path-mapper* (lambda (path)
-                            (find-path path :system (wrapper-options-system opts)
-                                            :path (wrapper-options-base-path opts))))
-           (bindings-table (make-bindings-table name opts configuration)))
-      (if (wrapper-options-persistent opts)
-          (persist-and-load-bindings name opts bindings-table)
-          (eval (expand-bindings opts bindings-table))))))
+  (with-wrapper-opts (name opts bindings-table) name
+    (if (wrapper-options-persistent opts)
+        (persist-and-load-bindings name opts bindings-table)
+        (eval (expand-bindings opts bindings-table)))))
 
 
 (defmacro defwrapper (name-and-opts &body configuration)

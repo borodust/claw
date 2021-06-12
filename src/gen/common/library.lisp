@@ -117,7 +117,7 @@
                           (destructuring-bind (adapter-kind &key ((:path adapter-path))
                                                               extract-pointers)
                               (ensure-list with-adapter)
-                            (let ((adapter-path (or (eval adapter-path) "adapter.c"))
+                            (let ((adapter-path (claw.wrapper:merge-wrapper-pathname (or (eval adapter-path) "adapter.c") wrapper))
                                   (extract-pointers (loop for regex in extract-pointers
                                                           collect (eval regex))))
                               (ecase (eval adapter-kind)
@@ -149,6 +149,7 @@
                                   for package in required-packages
                                   do (setf (gethash (string package) table) package)
                                   finally (return table)))
+             (*anonymous-names* (make-hash-table))
              (bindings (list))
              (*entities* (remove-if (eval ignore-entities)
                                     (stable-sort entities #'string<
@@ -176,7 +177,12 @@
                                                         (if-let (provided-package
                                                                  (gethash package-name package-table))
                                                           provided-package
-                                                          (make-keyword package-name))))))
+                                                          (make-keyword package-name)))))
+                            ,@(when-let (setfs (loop for name in (hash-table-keys *anonymous-names*)
+                                                     append `((getf (symbol-plist ',name)
+                                                                    :cffi-c-ref-anonymous-field)
+                                                              t)))
+                                `((setf ,@setfs))))
                           ,@(when *adapter*
                               (expand-adapter-routines *adapter* wrapper)))
            :exported-symbols (hash-table-keys *export-table*)

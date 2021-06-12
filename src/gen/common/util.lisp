@@ -19,7 +19,8 @@
                   *override-table*
                   *entities*
                   *adapted-function-table*
-                  *always-generate-adapter*))
+                  *always-generate-adapter*
+                  *anonymous-names*))
 
 (defvar *qualify-records* t)
 
@@ -171,3 +172,7 @@
 
 (defun parameter (name entity)
   (make-instance 'claw.spec:foreign-parameter :name name :enveloped entity))
+
+
+(defun register-anonymous-name (symbol)
+  (setf (gethash symbol *anonymous-names*) t))

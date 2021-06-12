@@ -12,6 +12,8 @@
 
            #:find-alias-for-entity
 
+           #:register-anonymous-name
+
            #:build-adapter
            #:initialize-adapter
            #:adapter

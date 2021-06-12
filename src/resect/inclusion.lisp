@@ -103,6 +103,10 @@
                                          :partially-included)))
 
 
+(defun mark-weakly-enforced (entity-id)
+  (upgrade-inclusion-status entity-id :weakly-enforced))
+
+
 (defun mark-excluded (entity-id)
   (upgrade-inclusion-status entity-id :excluded))
 
@@ -190,6 +194,21 @@
             when (and (typep field-type 'foreign-primitive)
                       (not (entity-explicitly-excluded-p field-type)))
               do (mark-partially-included (foreign-entity-id field-type))))))
+
+
+(defmethod try-including-entity ((entity foreign-alias))
+  (when (call-next-method)
+    (prog1 t
+      (let ((aliased (foreign-enveloped-entity entity)))
+        (when (and (typep aliased 'foreign-record)
+                   (emptyp (foreign-entity-name aliased)))
+          (mark-weakly-enforced (foreign-entity-id aliased)))))))
+
+
+(defmethod try-including-entity ((entity foreign-enum))
+  (cond
+    ((call-next-method) t)
+    ((emptyp (foreign-entity-name entity)) (mark-included (foreign-entity-id entity)))))
 
 
 (defun create-scanner (regex)

@@ -99,6 +99,7 @@
   (declare (ignore language))
   (let ((entities (claw.wrapper:wrapper-entities wrapper)))
     (destructuring-bind (&key in-package
+                           with-extra-packages
                            symbolicate-names
                            trim-enum-prefix
                            with-adapter
@@ -110,43 +111,51 @@
                            (ignore-entities (constantly nil))
                            use-float-features)
         configuration
-      (let ((in-package (eval in-package))
-            (*trim-enum-prefix-p* (eval trim-enum-prefix))
-            (*adapter* (when with-adapter
-                         (destructuring-bind (adapter-kind &key ((:path adapter-path))
-                                                             extract-pointers)
-                             (ensure-list with-adapter)
-                           (let ((adapter-path (or (eval adapter-path) "adapter.c"))
-                                 (extract-pointers (loop for regex in extract-pointers
-                                                         collect (eval regex))))
-                             (ecase (eval adapter-kind)
-                               (:static (make-static-adapter wrapper
-                                                             adapter-path
-                                                             extract-pointers
-                                                             in-package))
-                               (:dynamic (make-dynamic-adapter wrapper
-                                                               adapter-path
-                                                               extract-pointers
-                                                               in-package)))))))
-            (*export-table* (make-hash-table))
-            (*forward-declaration-table* (make-hash-table :test 'equal))
-            (*visit-table* (make-hash-table :test 'equal))
-            (*adapted-function-table* (make-hash-table :test 'equal))
-            (*override-table* (parse-overrides override-types))
-            (*recognize-strings* recognize-strings)
-            (*recognize-bitfields* recognize-bitfields)
-            (*recognize-arrays* recognize-arrays)
-            (*inline-functions* inline-functions)
-            (*use-float-features* use-float-features)
-            (*float-features-requested* nil)
-            (*always-generate-adapter* (or (claw.wrapper:wrapper-always-generate wrapper)
-                                           (featurep :claw-regen-adapter)))
-            (rename-symbols (eval (parse-renaming-pipeline symbolicate-names)))
-            (bindings (list))
-            (*entities* (remove-if (eval ignore-entities)
-                                   (stable-sort entities #'string<
-                                                :key #'claw.spec:foreign-entity-id))))
+      (let* ((in-package (eval in-package))
+             (*trim-enum-prefix-p* (eval trim-enum-prefix))
+             (*adapter* (when with-adapter
+                          (destructuring-bind (adapter-kind &key ((:path adapter-path))
+                                                              extract-pointers)
+                              (ensure-list with-adapter)
+                            (let ((adapter-path (or (eval adapter-path) "adapter.c"))
+                                  (extract-pointers (loop for regex in extract-pointers
+                                                          collect (eval regex))))
+                              (ecase (eval adapter-kind)
+                                (:static (make-static-adapter wrapper
+                                                              adapter-path
+                                                              extract-pointers
+                                                              in-package))
+                                (:dynamic (make-dynamic-adapter wrapper
+                                                                adapter-path
+                                                                extract-pointers
+                                                                in-package)))))))
+             (*export-table* (make-hash-table))
+             (*forward-declaration-table* (make-hash-table :test 'equal))
+             (*visit-table* (make-hash-table :test 'equal))
+             (*adapted-function-table* (make-hash-table :test 'equal))
+             (*override-table* (parse-overrides override-types))
+             (*recognize-strings* recognize-strings)
+             (*recognize-bitfields* recognize-bitfields)
+             (*recognize-arrays* recognize-arrays)
+             (*inline-functions* inline-functions)
+             (*use-float-features* use-float-features)
+             (*float-features-requested* nil)
+             (*always-generate-adapter* (or (claw.wrapper:wrapper-always-generate wrapper)
+                                            (featurep :claw-regen-adapter)))
+             (rename-symbols (eval (parse-renaming-pipeline symbolicate-names)))
+             (with-extra-packages (ensure-list with-extra-packages))
+             (required-packages (list* in-package with-extra-packages))
+             (package-table (loop with table = (make-hash-table :test 'equal)
+                                  for package in required-packages
+                                  do (setf (gethash (string package) table) package)
+                                  finally (return table)))
+             (bindings (list))
+             (*entities* (remove-if (eval ignore-entities)
+                                    (stable-sort entities #'string<
+                                                 :key #'claw.spec:foreign-entity-id))))
         (uiop:ensure-package in-package :use nil)
+        (loop for package in with-extra-packages
+              do (uiop:ensure-package package :use nil))
         (with-symbol-renaming (in-package rename-symbols)
           (loop for entity in *entities*
                 do (let ((*dependency-type-list* nil)
@@ -161,14 +170,16 @@
            :definitions `(,@(nreverse bindings)
                           (eval-when (:load-toplevel :compile-toplevel :execute)
                             ,@(loop for symbol being the hash-key of *export-table*
-                                    collect `(export ',symbol ,in-package)))
+                                    collect `(export ',symbol
+                                                     ,(gethash (package-name (symbol-package symbol))
+                                                               package-table))))
                           ,@(when *adapter*
                               (expand-adapter-routines *adapter* wrapper)))
            :exported-symbols (hash-table-keys *export-table*)
            :required-systems (append (list-required-systems generator)
                                      (when (and *use-float-features* *float-features-requested*)
                                        (list :float-features)))
-           :required-packages (list in-package)))))))
+           :required-packages required-packages))))))
 
 
 (defclass generator () ())

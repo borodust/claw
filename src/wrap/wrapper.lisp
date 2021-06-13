@@ -78,14 +78,14 @@
   parse)
 
 
-(defun parse-persistent-options (config system)
+(defun parse-persistent-options (name config)
   (when (first config)
     (destructuring-bind (bindings-system &key asd-path bindings-path depends-on) config
       (let* ((bindings-system (if (eq t bindings-system)
                                   (make-keyword (substitute
                                                  #\- #\/
                                                  (format nil "~A-~A"
-                                                         system
+                                                         name
                                                          :bindings)))
                                   bindings-system))
              (bindings-path (map-path (or bindings-path "bindings/")))
@@ -224,7 +224,7 @@
                           (t (eval-targets targets)))))
           (make-wrapper-options :system system
                                 :base-path base-path
-                                :persistent (parse-persistent-options persistent system)
+                                :persistent (parse-persistent-options name persistent)
 
                                 :language language
                                 :standard standard

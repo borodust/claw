@@ -106,7 +106,9 @@
 
 
 (defun entity->cffi-type (entity &key (qualify-records *qualify-records*))
-  (labels ((%enveloped-entity ()
+  (labels ((%type (type)
+             (get-overriden-type type))
+           (%enveloped-entity ()
              (claw.spec:unqualify-foreign-entity (claw.spec:foreign-enveloped-entity entity)))
            (%enveloped-char-p ()
              (let ((unwrapped (%enveloped-entity)))
@@ -121,40 +123,41 @@
                                      full-name))))))
     (typecase entity
       (claw.spec:foreign-pointer (if (and *recognize-strings* (%enveloped-char-p))
-                                     (get-overriden-type :string)
-                                     (list (get-overriden-type :pointer)
+                                     (%type :string)
+                                     (list (%type :pointer)
                                            (entity->cffi-type (%enveloped-entity)
                                                               :qualify-records qualify-records))))
-      (claw.spec:foreign-reference `(,(get-overriden-type :pointer)
+      (claw.spec:foreign-reference `(,(%type :pointer)
                                      ,(entity->cffi-type
                                        (%enveloped-entity)
                                        :qualify-records qualify-records)))
       (claw.spec:foreign-array (let ((dimensions (claw.spec:foreign-array-dimensions entity)))
                                  (cond
                                    ((and (= (length dimensions) 1) (%enveloped-char-p))
-                                    (get-overriden-type :string))
+                                    (%type :string))
                                    (dimensions
-                                    (list :array (entity->cffi-type
-                                                  (%enveloped-entity)
-                                                  :qualify-records qualify-records)
+                                    (list (%type :array)
+                                          (entity->cffi-type
+                                           (%enveloped-entity)
+                                           :qualify-records qualify-records)
                                           (apply #'* dimensions)))
                                    (t
-                                    (list (get-overriden-type :pointer)
+                                    (list (%type :pointer)
                                           (entity->cffi-type
                                            (%enveloped-entity)
                                            :qualify-records qualify-records))))))
       (claw.spec:foreign-struct (if qualify-records
-                                    `(:struct ,(%lisp-name))
+                                    `(,(%type :struct) ,(%lisp-name))
                                     (%lisp-name)))
       (claw.spec:foreign-union (if qualify-records
-                                   `(:union ,(%lisp-name))
+                                   `(,(%type :union) ,(%lisp-name))
                                    (%lisp-name)))
       (claw.spec:foreign-class (%lisp-name))
       (claw.spec:foreign-const-qualifier (entity->cffi-type
                                           (%enveloped-entity)
                                           :qualify-records qualify-records))
       (claw.spec:foreign-function (%lisp-name))
-      (claw.spec:foreign-function-prototype :void)
+      (claw.spec:foreign-function-prototype (%type :void))
       (t (%lisp-name)))))
 
 

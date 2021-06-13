@@ -66,13 +66,13 @@
 
 
 (defun adapt-parameters (entity)
-  (loop for param in (claw.spec:foreign-function-parameters entity)
+  (loop with any-adapted-p = nil
+        for param in (claw.spec:foreign-function-parameters entity)
         for count from 0
         for param-name = (if (emptyp (claw.spec:foreign-entity-name param))
                              (format nil "arg~A" count)
                              (claw.spec:foreign-entity-name param))
         for param-location = (claw.spec:foreign-entity-location param)
-        for any-adapted-p = nil
         collect (multiple-value-bind (type adapted)
                     (adapt-type (claw.spec:foreign-enveloped-entity param))
                   (when (and adapted (not any-adapted-p))

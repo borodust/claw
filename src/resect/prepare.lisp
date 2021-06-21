@@ -87,13 +87,21 @@
                instantiation-filter
                macros)
       this
-    (let ((*inspector* this)
-          (*prepared-entity-table* prepared-entity-table)
-          (*instantiated-classes* instantiated-classes)
-          (*instantiated-functions* instantiated-functions)
-          (*instantiation-filter* instantiation-filter)
-          (*macros* macros))
-      (prepare-declaration kind declaration))))
+    (let* ((*inspector* this)
+           (*prepared-entity-table* prepared-entity-table)
+           (*instantiated-classes* instantiated-classes)
+           (*instantiated-functions* instantiated-functions)
+           (*instantiation-filter* instantiation-filter)
+           (*macros* macros)
+           (namespace (%resect:declaration-namespace declaration))
+           (name (%resect:declaration-name declaration))
+           (full-name (format nil "~@[~A::~]~A"
+                              (unless (emptyp namespace) namespace)
+                              name))
+           (location (format-foreign-location
+                      (make-declaration-location declaration) nil)))
+      (unless (explicitly-excluded-p full-name location)
+        (prepare-declaration kind declaration)))))
 
 
 (defun prepare-foreign-library (uber-path

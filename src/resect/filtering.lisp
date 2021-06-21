@@ -60,18 +60,11 @@
       this)))
 
 
-(defun filter-library-entities (entities
-                                include-definitions
-                                include-sources
-                                exclude-definitions
-                                exclude-sources)
-  (with-scanners (include-definitions
-                  include-sources
-                  exclude-definitions
-                  exclude-sources)
-    (let ((*inclusion-table* (make-inclusion-table entities)))
-      (loop for entity in entities
-            for included-p = (marked-included-p (foreign-entity-id entity) *inclusion-table*)
-            for filtered = (when included-p (filter-entity entity))
-            when filtered
-              collect filtered))))
+(defun filter-library-entities (entities)
+  (let ((*inclusion-table* (make-inclusion-table entities)))
+    (loop for entity in entities
+          for included-p = (marked-included-p (foreign-entity-id entity)
+                                              *inclusion-table*)
+          for filtered = (when included-p (filter-entity entity))
+          when filtered
+            collect filtered)))

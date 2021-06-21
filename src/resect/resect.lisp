@@ -132,53 +132,52 @@
                                                             exclude-definitions
                                                             exclude-sources)
   (declare (ignore parser))
-  (with-temporary-directory (:pathname prepared-dir)
-    (uiop:with-temporary-file (:pathname uber-path :type "h")
-      (write-uber-header headers uber-path defines)
-      (multiple-value-bind (prepared-headers macros)
-          (prepare-foreign-library uber-path
-                                   prepared-dir
-                                   includes
-                                   frameworks
-                                   language
-                                   standard
-                                   target
-                                   intrinsics
-                                   instantiation-filter)
-        (let ((*declaration-table* (make-hash-table :test 'equal))
-              (*instantiated-table* (make-hash-table :test 'equal))
-              (*mangled-table* (make-hash-table :test 'equal))
-              (inspector (make-instance 'describing-inspector)))
-          (loop for header in prepared-headers
-                do (inspect-foreign-library inspector
-                                            header
-                                            includes
-                                            frameworks
-                                            language
-                                            standard
-                                            target
-                                            intrinsics))
-          (loop for constant in (prepare-macros-as-constants uber-path
-                                                             includes
-                                                             frameworks
-                                                             target
-                                                             macros
-                                                             intrinsics
-
-                                                             include-definitions
-                                                             include-sources
-                                                             exclude-definitions
-                                                             exclude-sources)
-                do (register-entity-instance constant))
-          (make-instance 'foreign-library
-                         :entities (filter-library-entities
-                                    (loop for value being the hash-value of *declaration-table*
-                                          collect value)
-                                    include-definitions
-                                    include-sources
-                                    exclude-definitions
-                                    exclude-sources)
-                         :language (language-of inspector)))))))
+  (with-scanners (include-definitions
+                  include-sources
+                  exclude-definitions
+                  exclude-sources)
+    (with-temporary-directory (:pathname prepared-dir)
+      (uiop:with-temporary-file (:pathname uber-path :type "h")
+        (write-uber-header headers uber-path defines)
+        (multiple-value-bind (prepared-headers macros)
+            (prepare-foreign-library uber-path
+                                     prepared-dir
+                                     includes
+                                     frameworks
+                                     language
+                                     standard
+                                     target
+                                     intrinsics
+                                     instantiation-filter)
+          (let ((*declaration-table* (make-hash-table :test 'equal))
+                (*instantiated-table* (make-hash-table :test 'equal))
+                (*mangled-table* (make-hash-table :test 'equal))
+                (inspector (make-instance 'describing-inspector)))
+            (loop for header in prepared-headers
+                  do (inspect-foreign-library inspector
+                                              header
+                                              includes
+                                              frameworks
+                                              language
+                                              standard
+                                              target
+                                              intrinsics))
+            (loop for constant in (prepare-macros-as-constants uber-path
+                                                               includes
+                                                               frameworks
+                                                               target
+                                                               macros
+                                                               intrinsics)
+                  do (register-entity-instance constant))
+            (make-instance 'foreign-library
+                           :entities (filter-library-entities
+                                      (loop for value being the hash-value of *declaration-table*
+                                            collect value)
+                                      include-definitions
+                                      include-sources
+                                      exclude-definitions
+                                      exclude-sources)
+                           :language (language-of inspector))))))))
 
 
 (defmacro on-post-parse (&body body)

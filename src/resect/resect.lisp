@@ -172,11 +172,7 @@
             (make-instance 'foreign-library
                            :entities (filter-library-entities
                                       (loop for value being the hash-value of *declaration-table*
-                                            collect value)
-                                      include-definitions
-                                      include-sources
-                                      exclude-definitions
-                                      exclude-sources)
+                                            collect value))
                            :language (language-of inspector))))))))
 
 

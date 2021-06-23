@@ -66,6 +66,19 @@
   (:method (kind declaration &key)
     (declare (ignore kind declaration))))
 
+
+(defmethod prepare-declaration :around (kind declaration &key &allow-other-keys)
+  (declare (ignore kind))
+  (let* ((namespace (%resect:declaration-namespace declaration))
+         (name (%resect:declaration-name declaration))
+         (full-name (format nil "~@[~A::~]~A"
+                            (unless (emptyp namespace) namespace)
+                            name))
+         (location (format-foreign-location
+                    (make-declaration-location declaration) nil)))
+    (unless (explicitly-excluded-p full-name location)
+      (call-next-method))))
+
 ;;;
 ;;; PREPARING
 ;;;
@@ -92,16 +105,8 @@
            (*instantiated-classes* instantiated-classes)
            (*instantiated-functions* instantiated-functions)
            (*instantiation-filter* instantiation-filter)
-           (*macros* macros)
-           (namespace (%resect:declaration-namespace declaration))
-           (name (%resect:declaration-name declaration))
-           (full-name (format nil "~@[~A::~]~A"
-                              (unless (emptyp namespace) namespace)
-                              name))
-           (location (format-foreign-location
-                      (make-declaration-location declaration) nil)))
-      (unless (explicitly-excluded-p full-name location)
-        (prepare-declaration kind declaration)))))
+           (*macros* macros))
+      (prepare-declaration kind declaration))))
 
 
 (defun prepare-foreign-library (uber-path

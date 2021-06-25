@@ -291,10 +291,12 @@
                                      :name name
                                      :constructor constructor
                                      :destructor destructor
-                                     :size-reporter (format-symbol (symbol-package name)
-                                                                   "~A$~A" 'iffi-sizeof name)
-                                     :alignment-reporter (format-symbol (symbol-package name)
-                                                                        "~A$~A" 'iffi-alignof name)
+                                     :size-reporter (when size-reporter
+                                                      (format-symbol (symbol-package name)
+                                                                     "~A$~A" 'iffi-sizeof name))
+                                     :alignment-reporter (when alignment-reporter
+                                                           (format-symbol (symbol-package name)
+                                                                          "~A$~A" 'iffi-alignof name))
                                      :field-map (make-field-map name fields))))
           (prog1 `(progn
                     (cffi:defctype ,name :void ,doc)

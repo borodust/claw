@@ -69,15 +69,8 @@
 
 (defmethod prepare-declaration :around (kind declaration &key &allow-other-keys)
   (declare (ignore kind))
-  (let* ((namespace (%resect:declaration-namespace declaration))
-         (name (%resect:declaration-name declaration))
-         (full-name (format nil "~@[~A::~]~A"
-                            (unless (emptyp namespace) namespace)
-                            name))
-         (location (format-foreign-location
-                    (make-declaration-location declaration) nil)))
-    (unless (explicitly-excluded-p full-name location)
-      (call-next-method))))
+  (unless (declaration-explicitly-excluded-p declaration)
+    (call-next-method)))
 
 ;;;
 ;;; PREPARING

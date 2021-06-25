@@ -704,19 +704,20 @@
     (resect:docollection (field-decl (%resect:type-fields (%resect:declaration-type decl)))
       (when (publicp field-decl)
         (let ((field-type (%resect:declaration-type field-decl)))
-          (push (make-instance 'foreign-record-field
-                               :name (%resect:declaration-name field-decl)
-                               :location (make-declaration-location field-decl)
-                               :enveloped (ensure-const-type-if-needed
-                                           field-type
-                                           (parse-type-by-category field-type)
-                                           field-decl)
-                               :bit-size (%resect:type-size field-type)
-                               :bit-alignment (%resect:type-alignment field-type)
-                               :bit-offset (%resect:field-offset field-decl)
-                               :bitfield-p (%resect:field-bitfield-p field-decl)
-                               :bit-width (%resect:field-width field-decl))
-                fields))))
+          (unless (declaration-explicitly-excluded-p field-decl)
+            (push (make-instance 'foreign-record-field
+                                 :name (%resect:declaration-name field-decl)
+                                 :location (make-declaration-location field-decl)
+                                 :enveloped (ensure-const-type-if-needed
+                                             field-type
+                                             (parse-type-by-category field-type)
+                                             field-decl)
+                                 :bit-size (%resect:type-size field-type)
+                                 :bit-alignment (%resect:type-alignment field-type)
+                                 :bit-offset (%resect:field-offset field-decl)
+                                 :bitfield-p (%resect:field-bitfield-p field-decl)
+                                 :bit-width (%resect:field-width field-decl))
+                  fields)))))
     (setf (fields-of entity) (nreverse fields))
     (ensure-inherited-fields entity)))
 

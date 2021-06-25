@@ -164,6 +164,24 @@
                               (get-location-path entity))))
 
 
+(defun declaration-full-name (declaration)
+  (unless (cffi:null-pointer-p declaration)
+    (let* ((owner-full-name (declaration-full-name (%resect:declaration-owner declaration)))
+           (namespace (if owner-full-name
+                          owner-full-name
+                          (%resect:declaration-namespace declaration)))
+           (name (%resect:declaration-name declaration)))
+      (format nil "~@[~A::~]~A"
+              (unless (emptyp namespace) namespace)
+              name))))
+
+
+(defun declaration-explicitly-excluded-p (declaration)
+  (explicitly-excluded-p (declaration-full-name declaration)
+                         (format-foreign-location
+                          (make-declaration-location declaration) nil)))
+
+
 (defun probably-included-p (name location)
   (and (explicitly-included-p name location)
        (not (explicitly-excluded-p name location))))

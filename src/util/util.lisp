@@ -405,9 +405,9 @@
 (defun pipeline-rename (name)
   (loop with *hit-count* = 0
         with string = (format nil "~A" name)
-        for scanner-action in *symbol-renaming-pipeline*
-        when (ppcre:scan-to-strings (car scanner-action) string)
-          do (setf string (funcall (cdr scanner-action) string)
+        for (scanner-regex . scanner-action) in *symbol-renaming-pipeline*
+        when (ppcre:scan-to-strings scanner-regex string)
+          do (setf string (funcall scanner-action string)
                    *hit-count* (1+ *hit-count*))
         finally (return string)))
 
@@ -421,13 +421,13 @@
 
 
 (defun %%by-removing-prefix (prefix)
-  (cons (format nil "^~A\\w+$" prefix)
+  (cons (format nil "^~A.+" prefix)
         (lambda (name)
           (subseq name (length prefix)))))
 
 
 (defun %%by-removing-postfix (postfix)
-  (cons (format nil "^\\w+~A$" postfix)
+  (cons (format nil "^.+~A$" postfix)
         (lambda (name)
           (subseq name 0 (- (length name) (length postfix))))))
 

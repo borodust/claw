@@ -99,6 +99,7 @@
            #:foreign-entity-unknown-p
 
            #:foreign-constructor-p
+           #:foreign-destructor-p
            #:format-foreign-location
            #:format-full-foreign-entity-name
            #:*tag-types*
@@ -537,6 +538,12 @@
 (defun foreign-constructor-p (entity)
   (and (typep entity 'foreign-method)
        (equal (foreign-entity-name (foreign-owner entity))
+              (foreign-entity-name entity))))
+
+
+(defun foreign-destructor-p (entity)
+  (and (typep entity 'foreign-method)
+       (equal (string+ "~" (foreign-entity-name (foreign-owner entity)))
               (foreign-entity-name entity))))
 
 

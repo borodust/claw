@@ -34,15 +34,29 @@
   node)
 
 
+(defun ensure-canonical-pointer (type)
+  (cond
+    ((and (atom type)
+          (or (eq type :const)
+              (string= "&rest" (string-downcase type))))
+     type)
+    ((and (listp type) (eq :pointer (cffi::canonicalize-foreign-type type)))
+     (list* :pointer (rest type)))
+    ((eq :pointer (cffi::canonicalize-foreign-type type))
+     :pointer)
+    (t type)))
+
+
 (defun find-base-type (type)
-  (if (and (listp type)
-           (eq :pointer (first type)))
-      (list :pointer (find-base-type (second type)))
-      (let* ((node (find-alias-node type))
-             (parent (and node (alias-node-parent node))))
-        (if parent
-            (find-base-type parent)
-            type))))
+  (let ((type (ensure-canonical-pointer type)))
+    (if (and (listp type)
+             (eq :pointer (first type)))
+        (list :pointer (find-base-type (second type)))
+        (let* ((node (find-alias-node type))
+               (parent (and node (alias-node-parent node))))
+          (if parent
+              (find-base-type parent)
+              type)))))
 
 
 (defun find-intricate-aliases (name)

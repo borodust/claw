@@ -41,13 +41,11 @@
   :license "MIT"
   :version "1.0"
   :depends-on (:uiop :alexandria :cl-resect :claw/util :claw/spec
-               :claw/wrapper :parse-number)
+                     :claw/wrapper :parse-number)
   :pathname "src/resect/"
   :serial t
   :components ((:file "packages")
                (:file "util")
-               (:file "inclusion")
-               (:file "filtering")
                (:file "template")
                (:file "inspect")
                (:file "macro")

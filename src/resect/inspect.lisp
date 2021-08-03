@@ -20,7 +20,11 @@
                                             includes frameworks
                                             language standard target
                                             intrinsics
-                                            &key (diagnostics t))
+                                            &key (diagnostics t)
+                                              include-definitions
+                                              include-sources
+                                              exclude-definitions
+                                              exclude-sources)
   (declare (ignore inspector))
   (flet ((%stringify (value)
            (when value
@@ -34,7 +38,11 @@
                                    :standard (%stringify standard)
                                    :target (%stringify target)
                                    :diagnostics diagnostics
-                                   :intrinsics intrinsics)
+                                   :intrinsics intrinsics
+                                   :include-definitions include-definitions
+                                   :include-sources include-sources
+                                   :exclude-definitions exclude-definitions
+                                   :exclude-sources exclude-sources)
       (let ((*translation-unit* unit))
         (call-next-method)))))
 

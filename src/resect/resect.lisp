@@ -65,6 +65,8 @@
 
 
 (defun parse-declaration-by-kind (decl &optional from-type)
+  (when (cffi:null-pointer-p decl)
+    (error "Type has no assigned declaration. Was it excluded by libresect?"))
   (parse-declaration (%resect:declaration-kind decl) decl :from-type from-type))
 
 
@@ -132,48 +134,54 @@
                                                             exclude-definitions
                                                             exclude-sources)
   (declare (ignore parser))
-  (with-scanners (include-definitions
-                  include-sources
-                  exclude-definitions
-                  exclude-sources)
-    (with-temporary-directory (:pathname prepared-dir)
-      (uiop:with-temporary-file (:pathname uber-path :type "h")
-        (write-uber-header headers uber-path defines)
-        (multiple-value-bind (prepared-headers macros)
-            (prepare-foreign-library uber-path
-                                     prepared-dir
-                                     includes
-                                     frameworks
-                                     language
-                                     standard
-                                     target
-                                     intrinsics
-                                     instantiation-filter)
-          (let ((*declaration-table* (make-hash-table :test 'equal))
-                (*instantiated-table* (make-hash-table :test 'equal))
-                (*mangled-table* (make-hash-table :test 'equal))
-                (inspector (make-instance 'describing-inspector)))
-            (loop for header in prepared-headers
-                  do (inspect-foreign-library inspector
-                                              header
-                                              includes
-                                              frameworks
-                                              language
-                                              standard
-                                              target
-                                              intrinsics))
-            (loop for constant in (prepare-macros-as-constants uber-path
-                                                               includes
-                                                               frameworks
-                                                               target
-                                                               macros
-                                                               intrinsics)
-                  do (register-entity-instance constant))
-            (make-instance 'foreign-library
-                           :entities (filter-library-entities
-                                      (loop for value being the hash-value of *declaration-table*
-                                            collect value))
-                           :language (language-of inspector))))))))
+  (with-temporary-directory (:pathname prepared-dir)
+    (uiop:with-temporary-file (:pathname uber-path :type "h")
+      (write-uber-header headers uber-path defines)
+      (multiple-value-bind (prepared-headers macros)
+          (prepare-foreign-library uber-path
+                                   prepared-dir
+                                   includes
+                                   frameworks
+                                   language
+                                   standard
+                                   target
+                                   intrinsics
+                                   instantiation-filter
+                                   :include-definitions include-definitions
+                                   :include-sources include-sources
+                                   :exclude-definitions exclude-definitions
+                                   :exclude-sources exclude-sources)
+        (let ((*declaration-table* (make-hash-table :test 'equal))
+              (*instantiated-table* (make-hash-table :test 'equal))
+              (*mangled-table* (make-hash-table :test 'equal))
+              (inspector (make-instance 'describing-inspector)))
+          (loop for header in prepared-headers
+                do (inspect-foreign-library inspector
+                                            header
+                                            includes
+                                            frameworks
+                                            language
+                                            standard
+                                            target
+                                            intrinsics
+                                            :include-definitions include-definitions
+                                            :include-sources include-sources
+                                            :exclude-definitions exclude-definitions
+                                            :exclude-sources exclude-sources))
+          (loop for constant in (prepare-macros-as-constants uber-path
+                                                             includes
+                                                             frameworks
+                                                             target
+                                                             macros
+                                                             intrinsics
+                                                             :include-definitions include-definitions
+                                                             :include-sources include-sources
+                                                             :exclude-definitions exclude-definitions
+                                                             :exclude-sources exclude-sources)
+                do (register-entity-instance constant))
+          (make-instance 'foreign-library
+                         :entities (hash-table-values *declaration-table*)
+                         :language (language-of inspector)))))))
 
 
 (defmacro on-post-parse (&body body)
@@ -704,20 +712,19 @@
     (resect:docollection (field-decl (%resect:type-fields (%resect:declaration-type decl)))
       (when (publicp field-decl)
         (let ((field-type (%resect:declaration-type field-decl)))
-          (unless (declaration-explicitly-excluded-p field-decl)
-            (push (make-instance 'foreign-record-field
-                                 :name (%resect:declaration-name field-decl)
-                                 :location (make-declaration-location field-decl)
-                                 :enveloped (ensure-const-type-if-needed
-                                             field-type
-                                             (parse-type-by-category field-type)
-                                             field-decl)
-                                 :bit-size (%resect:type-size field-type)
-                                 :bit-alignment (%resect:type-alignment field-type)
-                                 :bit-offset (%resect:field-offset field-decl)
-                                 :bitfield-p (%resect:field-bitfield-p field-decl)
-                                 :bit-width (%resect:field-width field-decl))
-                  fields)))))
+          (push (make-instance 'foreign-record-field
+                               :name (%resect:declaration-name field-decl)
+                               :location (make-declaration-location field-decl)
+                               :enveloped (ensure-const-type-if-needed
+                                           field-type
+                                           (parse-type-by-category field-type)
+                                           field-decl)
+                               :bit-size (%resect:type-size field-type)
+                               :bit-alignment (%resect:type-alignment field-type)
+                               :bit-offset (%resect:field-offset field-decl)
+                               :bitfield-p (%resect:field-bitfield-p field-decl)
+                               :bit-width (%resect:field-width field-decl))
+                fields))))
     (setf (fields-of entity) (nreverse fields))
     (ensure-inherited-fields entity)))
 

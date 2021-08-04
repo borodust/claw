@@ -107,3 +107,14 @@
                                                             *class*
                                                             ,name
                                                             ,@params))))))))
+
+
+(defmacro ignore-names (&body patterns)
+  (let ((entity (gensym (string 'entity)))
+        (scanner (gensym (string 'scanner)))
+        (scanners (gensym (string 'scanners))))
+    `(let ((,scanners (list ,@(loop for pattern in patterns
+                                    collect `(cl-ppcre:create-scanner ,pattern)))))
+       (lambda (,entity)
+         (loop :for ,scanner :in ,scanners
+                 :thereis (cl-ppcre:scan ,scanner (format-full-foreign-entity-name ,entity)))))))

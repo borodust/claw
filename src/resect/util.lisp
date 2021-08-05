@@ -118,3 +118,23 @@
        (lambda (,entity)
          (loop :for ,scanner :in ,scanners
                  :thereis (cl-ppcre:scan ,scanner (format-full-foreign-entity-name ,entity)))))))
+
+
+(defmacro ignore-some (&body ignores)
+  (let ((entity (gensym (string 'entity))))
+    `(lambda (,entity)
+       (or ,@(loop for ignore in ignores
+                   collect `(funcall ,ignore ,entity))))))
+
+
+(defmacro ignore-every (&body ignores)
+  (let ((entity (gensym (string 'entity))))
+    `(lambda (,entity)
+       (and ,@(loop for ignore in ignores
+                    collect `(funcall ,ignore ,entity))))))
+
+
+(defmacro ignore-not (predicate)
+  (let ((entity (gensym (string 'entity))))
+    `(lambda (,entity)
+       (not (funcall ,predicate ,entity)))))

@@ -21,6 +21,7 @@
                                             language standard target
                                             intrinsics
                                             &key (diagnostics t)
+                                              defines
                                               include-definitions
                                               include-sources
                                               exclude-definitions
@@ -42,7 +43,8 @@
                                    :include-definitions include-definitions
                                    :include-sources include-sources
                                    :exclude-definitions exclude-definitions
-                                   :exclude-sources exclude-sources)
+                                   :exclude-sources exclude-sources
+                                   :defines defines)
       (let ((*translation-unit* unit))
         (call-next-method)))))
 

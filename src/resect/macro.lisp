@@ -15,17 +15,13 @@
                                     frameworks
                                     target
                                     macros
-                                    intrinsics
-                                    &key include-definitions
-                                      include-sources
-                                      exclude-definitions
-                                      exclude-sources)
+                                    intrinsics)
   (uiop:with-temporary-file (:pathname macro-helper-path :type "h")
     (alexandria:with-output-to-file (out macro-helper-path :if-exists :supersede)
       (format out "#ifndef  __CLAW_MACRO~%#define __CLAW_MACRO 1~%")
       (format out "~%#include \"~A\"~%" (uiop:native-namestring uber-path))
-      (loop for (name . location) in macros
-            do (format out "~&auto ~A~A = ~A;" +macro-prefix+ name name))
+      (loop for name in macros
+            do (format out "~&auto ~A~A = ~A; }}}}}}}}}}}}}}}}" +macro-prefix+ name name))
       (format out "~&~%#endif"))
     (let (*macros*)
       (inspect-foreign-library (make-instance 'macro-inspector)
@@ -37,10 +33,7 @@
                                target
                                intrinsics
                                :diagnostics nil
-                               :include-definitions include-definitions
-                               :include-sources include-sources
-                               :exclude-definitions exclude-definitions
-                               :exclude-sources exclude-sources)
+                               :include-definitions (list +macro-prefix+))
       *macros*)))
 
 

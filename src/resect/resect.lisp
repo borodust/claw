@@ -173,11 +173,7 @@
                                                              frameworks
                                                              target
                                                              macros
-                                                             intrinsics
-                                                             :include-definitions include-definitions
-                                                             :include-sources include-sources
-                                                             :exclude-definitions exclude-definitions
-                                                             :exclude-sources exclude-sources)
+                                                             intrinsics)
                 do (register-entity-instance constant))
           (make-instance 'foreign-library
                          :entities (hash-table-values *declaration-table*)

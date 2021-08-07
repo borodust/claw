@@ -235,9 +235,8 @@
 ;;;
 (defmethod prepare-declaration ((kind (eql :macro)) declaration &key)
   (unless (%resect:macro-function-like-p declaration)
-    (let ((name (%resect:declaration-name declaration))
-          (location (format-foreign-location (make-declaration-location declaration) nil)))
-      (setf (gethash name *macros*) (cons name location)))))
+    (let ((name (%resect:declaration-name declaration)))
+      (setf (gethash name *macros*) name))))
 
 
 ;;;

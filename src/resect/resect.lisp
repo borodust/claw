@@ -672,7 +672,7 @@
                 (setf (gethash mangled-name *mangled-table*) method)))))))
     (unless (or (claw.spec:foreign-record-abstract-p entity)
                 pure-virtual-found
-                (not (claw.spec:foreign-entity-name entity))
+                (not (claw.spec:format-full-foreign-entity-name entity))
                 (zerop (claw.spec:foreign-entity-bit-size entity))
                 (not (eq :included (%resect:declaration-inclusion-status record-decl))))
       (register-default-methods entity (not constructor-found) (not destructor-found)))))

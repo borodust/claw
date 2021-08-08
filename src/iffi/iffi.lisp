@@ -500,6 +500,9 @@
         (with-gensyms (ptr condi)
           `(let ((,ptr (intricate-alloc ',quoted-name)))
              (handler-case
+                 ;; FIXME: here we actually a break funcall protocol a bit
+                 ;; because if during args evaluation condition is raised it is
+                 ;; going to be consumed here with stack being unwound
                  (,ctor '(:pointer ,quoted-name) ,ptr ,@args)
                (serious-condition (,condi) (intricate-free ,ptr) (error ,condi)))
              ,ptr))

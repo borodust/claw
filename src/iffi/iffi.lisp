@@ -463,12 +463,6 @@
        ,@body)))
 
 
-(defun intricate-signal-handler (ptr)
-  (lambda (condi)
-    (intricate-free ptr)
-    (signal condi)))
-
-
 ;;;
 ;;; ALIAS
 ;;;
@@ -489,7 +483,7 @@
     (if-let ((ctor (constructor-of record)))
       (handler-case
           (apply (constructor-of record) `(:pointer ,name) ptr args)
-        (serious-condition (condi) (intricate-free ptr) (signal condi)))
+        (serious-condition (condi) (intricate-free ptr) (error condi)))
       (error "Constructor not found for record ~A" name))
     ptr))
 
@@ -507,7 +501,7 @@
           `(let ((,ptr (intricate-alloc ',quoted-name)))
              (handler-case
                  (,ctor '(:pointer ,quoted-name) ,ptr ,@args)
-               (serious-condition (,condi) (intricate-free ,ptr) (signal ,condi)))
+               (serious-condition (,condi) (intricate-free ,ptr) (error ,condi)))
              ,ptr))
         whole)))
 

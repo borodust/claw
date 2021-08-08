@@ -35,12 +35,28 @@
 
 
 (defun (setf intricate-function-pointer-extractor) (value name &rest arg-types)
-  (setf (gethash (list* name arg-types) *function-pointer-extractor-table*) value))
+  (let ((intricate-function-name (apply #'intricate-function name arg-types)))
+    (unless intricate-function-name
+      (error "Intricate function uknown: ~A ~A" name arg-types))
+    (setf (gethash intricate-function-name *function-pointer-extractor-table*) value)))
 
 
 (defun intricate-function-pointer (name &rest arg-types)
-  (when-let ((extractor (gethash (list* name arg-types) *function-pointer-extractor-table*)))
-    (funcall extractor)))
+  (let ((intricate-function-name (apply #'intricate-function name arg-types)))
+    (unless intricate-function-name
+      (error "Intricate function uknown: ~A ~A" name arg-types))
+    (when-let ((extractor (gethash intricate-function-name *function-pointer-extractor-table*)))
+      (funcall extractor))))
+
+
+(define-compiler-macro intricate-function-pointer (&whole whole name &rest arg-types)
+  (let* ((unquoted-arg-types (mapcar #'find-quoted arg-types))
+         (intricate-function-name (apply #'intricate-function (find-quoted name) unquoted-arg-types)))
+    (if (not intricate-function-name)
+        whole
+        (if-let ((extractor (gethash intricate-function-name *function-pointer-extractor-table*)))
+          `(funcall #',extractor)
+          whole))))
 
 
 (defun intricate-funcall (name &rest args)

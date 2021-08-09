@@ -55,7 +55,7 @@
     (if (not intricate-function-name)
         whole
         (if-let ((extractor (gethash intricate-function-name *function-pointer-extractor-table*)))
-          `(funcall #',extractor)
+          `(,extractor)
           whole))))
 
 

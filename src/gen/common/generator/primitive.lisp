@@ -11,6 +11,10 @@
   :test 'equal)
 
 
+(define-constant +special-primitives+ '("va_list")
+  :test 'equal)
+
+
 (defun generate-primitive-byte-holder (type)
   (let* ((size (ceiling (/ (claw.spec:foreign-entity-bit-size type)
                            +byte-size+)))
@@ -31,19 +35,30 @@
        (member (claw.spec:foreign-entity-name entity) +emulated-primitives+ :test #'string=)))
 
 
+(defun special-primitive-p (entity)
+  (and (claw.spec:foreign-named-p entity)
+       (member (claw.spec:foreign-entity-name entity) +special-primitives+ :test #'string=)))
+
+
 (defmethod generate-binding ((generator generator)
                              (type claw.spec:foreign-primitive)
                              &key)
-  (switch ((claw.spec:foreign-entity-name type) :test #'string=)
-    ("wchar_t" (let ((name (entity->cffi-type type)))
-                 `((cffi:defctype ,name ,(eswitch ((claw.spec:foreign-entity-bit-size type)
-                                                   :test #'=)
-                                           (8 :char)
-                                           (16 :uint16)
-                                           (32 :uint32)
-                                           (64 :uint64))))))
-    (t (when (emulated-primitive-p type)
-         (generate-primitive-byte-holder type)))))
+  (let ((entity-name (claw.spec:foreign-entity-name type)))
+    (switch (entity-name :test #'string=)
+      ("wchar_t" (let ((name (entity->cffi-type type)))
+                   `((cffi:defctype ,name ,(eswitch ((claw.spec:foreign-entity-bit-size type)
+                                                     :test #'=)
+                                             (8 :char)
+                                             (16 :uint16)
+                                             (32 :uint32)
+                                             (64 :uint64))))))
+      (t (cond
+           ((emulated-primitive-p type)
+            (generate-primitive-byte-holder type))
+           ((special-primitive-p type)
+            (eswitch (entity-name :test #'string=)
+              ("va_list" (let ((name (entity->cffi-type type)))
+                           `((cffi:defctype ,name (:pointer :void))))))))))))
 
 
 (defmethod dependablep ((entity claw.spec:foreign-primitive))

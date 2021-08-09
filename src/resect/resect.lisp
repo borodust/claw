@@ -9,6 +9,9 @@
 (defvar *parsed-pointers* nil)
 (defvar *current-owner* nil)
 
+(define-constant +va-list-id+ "va_list"
+  :test #'string=)
+
 (defgeneric parse-declaration (kind declaration &key &allow-other-keys))
 
 
@@ -30,13 +33,23 @@
     (or instantiated type-entity)))
 
 
+(defmethod parse-declaration :around (kind decl &key)
+  (declare (ignore kind))
+  (if (and (string= +va-list-id+ (%resect:declaration-name decl))
+           (emptyp (%resect:declaration-namespace decl)))
+      (register-custom-primitive +va-list-id+)
+      (call-next-method)))
+
+
 (defun const (entity)
   (make-instance 'claw.spec:foreign-const-qualifier :enveloped entity))
 
 
 (defmethod parse-type :around (category kind type)
   (declare (ignorable category kind type))
-  (let ((result (call-next-method)))
+  (let ((result (if (string= +va-list-id+ (%resect:type-name type))
+                    (register-custom-primitive +va-list-id+)
+                    (call-next-method))))
     (when (%resect:type-const-qualified-p type)
       (setf result (const result)))
     result))
@@ -281,6 +294,14 @@
       (values (setf (gethash id *declaration-table*) entity) t))))
 
 
+(defun register-custom-primitive (name)
+  (register-entity 'foreign-primitive
+                   :id name
+                   :name name
+                   :bit-size 0
+                   :bit-alignment 0))
+
+
 (defun make-declaration-location (declaration)
   (let ((location (%resect:declaration-location declaration)))
     (make-instance 'foreign-location
@@ -313,11 +334,7 @@
 ;;; PRIMITIVE
 ;;;
 (defun register-void ()
-  (register-entity 'foreign-primitive
-                   :id "void"
-                   :name "void"
-                   :bit-size 0
-                   :bit-alignment 0))
+  (register-custom-primitive "void"))
 
 
 (defun register-primitive-resect-type (kind type)

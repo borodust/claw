@@ -22,7 +22,7 @@
   (let* ((type-owner (foreign-owner type-entity))
          (instantiated (when (and *current-owner*
                                   type-owner
-                                  (foreign-entity-parameters type-owner)
+                                  (foreign-entity-template-p type-owner)
                                   (string= (format-full-foreign-entity-name type-owner)
                                            (remove-template-argument-string
                                             (format-full-foreign-entity-name *current-owner*))))
@@ -269,7 +269,7 @@
           (%resect:declaration-id decl)
           (when (and owner
                      (foreign-entity-arguments owner)
-                     (not (foreign-entity-parameters owner))
+                     (not (foreign-entity-template-p owner))
                      (> (foreign-entity-bit-size owner) 0))
             (format-full-foreign-entity-name owner))))
 
@@ -684,7 +684,8 @@
                                  :parameters params
                                  :variadic (%resect:method-variadic-p method-decl)
                                  :static (eq :static (%resect:method-storage-class method-decl))
-                                 :const (%resect:method-const-p method-decl))
+                                 :const (%resect:method-const-p method-decl)
+                                 :template (%resect:declaration-template-p method-decl))
               (when newp
                 (setf (gethash mangled-name *mangled-table*) method)))))))
     (unless (or (claw.spec:foreign-record-abstract-p entity)
@@ -771,7 +772,8 @@
                              :private (or (foreign-entity-private-p owner)
                                           (not (publicp decl))
                                           (not (template-arguments-public-p decl)))
-                             :forward (%resect:declaration-forward-p decl)))
+                             :forward (%resect:declaration-forward-p decl)
+                             :template (%resect:declaration-template-p decl)))
         (when registeredp
           (when owner
             (add-dependent owner entity))
@@ -883,6 +885,7 @@
                          :parameters params
                          :variadic (%resect:function-variadic-p decl)
                          :inlined (%resect:function-inlined-p decl)
+                         :template (%resect:declaration-template-p decl)
                          :entity-parameters (collect-entity-parameters decl)
                          :entity-arguments (collect-entity-arguments decl))
       (when newp

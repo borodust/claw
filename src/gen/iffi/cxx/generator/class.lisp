@@ -128,7 +128,7 @@
             ,@(when with-superclasses
                 '(()))
           ,(claw.spec:format-foreign-location (claw.spec:foreign-entity-location entity))
-          ,@(unless (claw.spec:foreign-entity-parameters entity)
+          ,@(unless (claw.spec:foreign-entity-template-p entity)
               (loop for field in (claw.spec:foreign-record-fields entity)
                     for known-p = (call-shielded-from-unknown
                                    (lambda ()

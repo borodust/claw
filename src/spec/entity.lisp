@@ -83,6 +83,8 @@
            #:foreign-entity-value
            #:foreing-variable-external-p
 
+           #:foreign-templatable-p
+           #:foreign-entity-template-p
            #:foreign-parameterizable-p
            #:foreign-entity-parameter
            #:foreign-entity-type-parameter
@@ -295,6 +297,22 @@
          :initform nil
          :reader foreign-enum-type)))
 
+;;;
+;;; TEMPLATABLE
+;;;
+(defclass templatable ()
+  ((template-p :initarg :template
+               :initform nil
+               :reader foreign-entity-template-p)))
+
+
+(defmethod foreign-entity-template-p (any)
+  (declare (ignore any))
+  nil)
+
+
+(defun foreign-templatable-p (entity)
+  (typep entity 'templatable))
 
 ;;;
 ;;; PARAMETERIZED
@@ -368,7 +386,8 @@
               :type fixnum)))
 
 
-(defclass foreign-record (declared parameterized specializable ownable dependable foreign-type)
+(defclass foreign-record (declared templatable parameterized
+                          specializable ownable dependable foreign-type)
   ((fields :initarg :fields
            :initform nil
            :reader foreign-record-fields)
@@ -427,6 +446,7 @@
 (defclass foreign-function (declared
                             identified
                             named
+                            templatable
                             parameterized
                             specializable
                             foreign-function-prototype)

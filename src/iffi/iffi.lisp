@@ -365,7 +365,7 @@
 (defun intricate-alloc (name &optional (count 1))
   (if-let ((intricate (find-intricate-record name)))
     (aligned-alloc (intricate-alignment name) (* (intricate-size name) count))
-    (cffi:foreign-alloc name :count count)))
+    (aligned-alloc (cffi:foreign-type-size name) (* (cffi:foreign-type-alignment name) count))))
 
 
 (define-compiler-macro intricate-alloc (&whole whole name &optional (count 1))
@@ -395,11 +395,11 @@
 
 (declaim (inline intricate-free))
 (defun intricate-free (ptr)
-  (cffi-sys:foreign-free ptr))
+  (aligned-free ptr))
 
 
 (define-compiler-macro intricate-free (ptr)
-  `(cffi-sys:foreign-free ,ptr))
+  `(aligned-free ,ptr))
 
 
 (defmacro with-field-setter ((field-setter type-name slot-name) &body body)

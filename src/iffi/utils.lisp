@@ -1,5 +1,6 @@
 (cl:in-package :iffi)
 
+
 (defun find-quoted (value)
   (cond
     ((keywordp value) value)
@@ -7,16 +8,28 @@
 
 
 (defmacro initialize-iffi ()
-  (let ((alloc-name
-          (cond
-            ((cffi:foreign-symbol-pointer "aligned_alloc") "aligned_alloc")
-            ((cffi:foreign-symbol-pointer "_aligned_malloc") "_aligned_malloc")
-            (t (error "Aligned memory allocation function not found. No C std library linked?")))))
-    `(progn
-       (declaim (inline iffi::aligned-alloc))
-       (cffi:defcfun (,alloc-name iffi::aligned-alloc) :pointer
-         (byte-alignment :size)
-         (byte-size :size)))))
+  `(progn
+     (declaim (inline iffi::aligned-alloc iffi::aligned-free))
+     ,@(cond
+         ((cffi:foreign-symbol-pointer "_aligned_malloc")
+          `((declaim (inline iffi::%aligned-malloc))
+            (cffi:defcfun ("_aligned_malloc" iffi::%aligned-malloc) :pointer
+              (byte-size :size)
+              (byte-alignment :size))
+
+            (defun iffi::aligned-alloc (alignment size)
+              (iffi::%aligned-malloc size alignment))
+
+            (cffi:defcfun ("_aligned_free" iffi::aligned-free) :pointer
+              (memory :pointer))))
+         ((cffi:foreign-symbol-pointer "aligned_alloc")
+          `((cffi:defcfun ("aligned_alloc" iffi::aligned-alloc) :pointer
+              (byte-alignment :size)
+              (byte-size :size))
+
+            (cffi:defcfun ("free" iffi::aligned-free) :pointer
+              (memory :pointer))))
+         (t (error "Aligned memory allocation function not found. No C std library linked?")))))
 
 
 (defmacro meta-eval (&body body)

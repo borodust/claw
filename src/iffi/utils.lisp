@@ -11,6 +11,14 @@
   `(progn
      (declaim (inline iffi::aligned-alloc iffi::aligned-free))
      ,@(cond
+         ((cffi:foreign-symbol-pointer "aligned_alloc")
+          `((cffi:defcfun ("aligned_alloc" iffi::aligned-alloc) :pointer
+              (byte-alignment :size)
+              (byte-size :size))
+
+            (defun iffi::aligned-free (ptr)
+              (cffi:foreign-free ptr))))
+
          ((cffi:foreign-symbol-pointer "_aligned_malloc")
           `((declaim (inline iffi::%aligned-malloc))
             (cffi:defcfun ("_aligned_malloc" iffi::%aligned-malloc) :pointer
@@ -22,13 +30,7 @@
 
             (cffi:defcfun ("_aligned_free" iffi::aligned-free) :pointer
               (memory :pointer))))
-         ((cffi:foreign-symbol-pointer "aligned_alloc")
-          `((cffi:defcfun ("aligned_alloc" iffi::aligned-alloc) :pointer
-              (byte-alignment :size)
-              (byte-size :size))
 
-            (cffi:defcfun ("free" iffi::aligned-free) :pointer
-              (memory :pointer))))
          (t (error "Aligned memory allocation function not found. No C std library linked?")))))
 
 

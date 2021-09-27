@@ -314,12 +314,12 @@
                                                            (format-symbol (symbol-package name)
                                                                           "~A$~A" 'iffi-alignof name))
                                      :field-map (make-field-map name fields))))
-          (prog1 `(progn
-                    (cffi:defctype ,name :void ,doc)
-                    ,@(when (and size-reporter alignment-reporter)
-                        (expand-record record size-reporter alignment-reporter inline fields))
-                    (meta-eval
-                      (register-intricate-record ',(serialize-intricate-record record))))))))))
+          `(progn
+             (cffi:defctype ,name :void ,doc)
+             ,@(when (and size-reporter alignment-reporter)
+                 (expand-record record size-reporter alignment-reporter inline fields))
+             (meta-eval
+               (register-intricate-record ',(serialize-intricate-record record)))))))))
 
 
 (defmacro defiunion (name-and-opts &body fields)
@@ -332,6 +332,20 @@
 
 (defmacro deficlass (name-and-opts superclasses &body fields)
   `(defirecord ,name-and-opts ,superclasses ,@fields))
+
+
+(defmacro define-intricate-function-class (name-and-opts &body config)
+  (destructuring-bind (name &key (constructor (error ":constructor missing"))
+                              (destructor (error ":destructor missing")))
+      (ensure-list name-and-opts)
+    (let ((doc (when (stringp (first config))
+                 (first config))))
+      `(progn
+         (cffi:defctype ,name :pointer ,doc)
+         (iffi:defifun (,constructor iffi:make-intricate-function-class-instance) :pointer
+           (callback-pointer ,name))
+         (iffi:defifun (,destructor iffi:destroy-intricate-function-class-instance) :void
+           (function-class-instance ,name))))))
 
 
 (defun intricate-size (name)

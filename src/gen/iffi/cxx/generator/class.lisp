@@ -153,8 +153,45 @@
                                                    (claw.spec:foreign-entity-location field)))))))))))
 
 
+(defun adapt-function-class-instance-ctor (entity)
+  (let ((full-name (claw.spec:format-full-foreign-entity-name entity))
+        (function-proto (claw.spec:foreign-entity-value
+                         (first (claw.spec:foreign-entity-arguments entity)))))
+    (make-instance 'adapted-function
+                   :name (string+ (claw.spec:foreign-entity-mangled-name entity) "_ctor")
+                   :namespace (claw.spec:foreign-entity-namespace entity)
+                   :parameters (list (parameter "__claw_callback_"
+                                                (pointer function-proto)))
+                   :result-type (void-pointer)
+                   :body (format nil "return new ~A(__claw_callback_);" full-name))))
+
+
+(defun adapt-function-class-instance-dtor (entity)
+  (make-instance 'adapted-function
+                 :name (string+ (claw.spec:foreign-entity-mangled-name entity) "_dtor")
+                 :namespace (claw.spec:foreign-entity-namespace entity)
+                 :parameters (list (parameter "__claw_function_class_instance_"
+                                              (pointer entity)))
+                 :result-type (void)
+                 :body "delete __claw_function_class_instance_;"))
+
+
+(defun generate-function-class-binding (entity)
+  (let ((name (symbolicate-record-name entity))
+        (adapted-ctor (register-adapted-function (adapt-function-class-instance-ctor entity)))
+        (adapted-dtor (register-adapted-function (adapt-function-class-instance-dtor entity))))
+    (export-symbol name)
+    `((iffi:define-intricate-function-class (,name
+                                             :constructor ,adapted-ctor
+                                             :destructor ,adapted-dtor)
+        ,(claw.spec:format-foreign-location (claw.spec:foreign-entity-location entity))))))
+
+
 (defmethod generate-binding ((generator iffi-generator) (entity claw.spec:foreign-class) &key)
-  (generate-record-binding 'iffi:deficlass entity))
+  (if (and (string= "std" (claw.spec:foreign-entity-namespace entity))
+           (starts-with-subseq "function<" (claw.spec:foreign-entity-name entity)))
+      (generate-function-class-binding entity)
+      (generate-record-binding 'iffi:deficlass entity)))
 
 
 (defmethod generate-binding ((generator iffi-generator) (entity claw.spec:foreign-struct) &key)

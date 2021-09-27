@@ -24,4 +24,8 @@
            #:make-intricate-instance
            #:destroy-intricate-instance
            #:with-intricate-instance
-           #:with-intricate-instances))
+           #:with-intricate-instances
+
+           #:define-intricate-function-class
+           #:make-intricate-function-class-instance
+           #:destroy-intricate-function-class-instance))

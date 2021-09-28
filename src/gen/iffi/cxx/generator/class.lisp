@@ -177,14 +177,36 @@
 
 
 (defun generate-function-class-binding (entity)
-  (let ((name (symbolicate-record-name entity))
-        (adapted-ctor (register-adapted-function (adapt-function-class-instance-ctor entity)))
-        (adapted-dtor (register-adapted-function (adapt-function-class-instance-dtor entity))))
+  (let* ((name (symbolicate-record-name entity))
+         (adapted-ctor (register-adapted-function (adapt-function-class-instance-ctor entity)))
+         (adapted-dtor (register-adapted-function (adapt-function-class-instance-dtor entity)))
+         (fun-proto (claw.spec:foreign-entity-value (first (claw.spec:foreign-entity-arguments entity))))
+         (adapted-proto (adapt-function
+                         (make-instance 'claw.spec:foreign-function
+                                        :id (string+
+                                             (claw.spec:foreign-entity-id entity)
+                                             "_claw_fc")
+                                        :source (claw.spec:foreign-entity-source fun-proto)
+                                        :name (claw.spec:foreign-entity-name entity)
+                                        :namespace (claw.spec:foreign-entity-namespace entity)
+                                        :location (claw.spec:foreign-entity-location entity)
+                                        :mangled (string+
+                                                  (claw.spec:foreign-entity-mangled-name entity)
+                                                  "_claw_fc")
+                                        :result-type (claw.spec:foreign-function-result-type fun-proto)
+                                        :parameters (claw.spec:foreign-function-parameters fun-proto))
+                         :mode :c++)))
     (export-symbol name)
     `((iffi:define-intricate-function-class (,name
                                              :constructor ,adapted-ctor
-                                             :destructor ,adapted-dtor)
-        ,(claw.spec:format-foreign-location (claw.spec:foreign-entity-location entity))))))
+                                             :destructor ,adapted-dtor
+                                             :size-reporter ,(register-adapted-function
+                                                              (adapt-reporter entity "sizeof"))
+                                             :alignment-reporter ,(register-adapted-function
+                                                                   (adapt-reporter entity "alignof")))
+          ,(entity->cffi-type (adapted-function-result-type adapted-proto))
+        ,(claw.spec:format-full-foreign-entity-name entity)
+        ,@(generate-adapted-parameters adapted-proto)))))
 
 
 (defmethod generate-binding ((generator iffi-generator) (entity claw.spec:foreign-class) &key)

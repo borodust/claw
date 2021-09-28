@@ -27,5 +27,6 @@
            #:with-intricate-instances
 
            #:define-intricate-function-class
-           #:make-intricate-function-class-instance
-           #:destroy-intricate-function-class-instance))
+           #:deficallback
+           #:make-intricate-callback
+           #:destroy-intricate-callback))

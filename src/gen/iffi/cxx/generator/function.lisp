@@ -29,6 +29,14 @@
     (check-function-entity-known (claw.spec:foreign-enveloped-entity entity))))
 
 
+(defun generate-adapted-parameters (adapted-function)
+  (loop for param in (adapted-function-parameters adapted-function)
+        for name = (c-name->lisp (claw.spec:foreign-entity-name param)
+                                 :parameter)
+        for enveloped = (claw.spec:foreign-enveloped-entity param)
+        collect `(,name ,(entity->cffi-type enveloped))))
+
+
 (defun generate-function-binding (entity)
   (check-function-entity-known (claw.spec:foreign-function-result-type entity))
   (loop for param in (claw.spec:foreign-function-parameters entity)
@@ -42,11 +50,7 @@
          (name (symbolicate-function-name entity))
          (result-type (entity->cffi-type
                        (adapted-function-result-type adapted-function)))
-         (params (loop for param in (adapted-function-parameters adapted-function)
-                       for name = (c-name->lisp (claw.spec:foreign-entity-name param)
-                                                :parameter)
-                       for enveloped = (claw.spec:foreign-enveloped-entity param)
-                       collect `(,name ,(entity->cffi-type enveloped))))
+         (params (generate-adapted-parameters adapted-function))
 
          (adapted-cname (register-adapted-function adapted-function))
          (extractor-cname (when (function-pointer-extractor-required-p full-name)

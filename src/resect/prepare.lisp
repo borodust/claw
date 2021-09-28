@@ -175,7 +175,9 @@
               (%resect:declaration-partially-specialized-p decl)
               (not (publicp decl))
               (not (template-arguments-public-p decl))
-              (emptyp (%resect:declaration-name decl)))
+              (emptyp (%resect:declaration-name decl))
+              (and (string= "std" (%resect:declaration-namespace decl))
+                   (string= "function" (%resect:declaration-name decl))))
     (setf
      (gethash (%resect:declaration-id decl) *instantiated-classes*)
      (prepare-instantiated-source *inspector* decl)))

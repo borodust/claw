@@ -18,9 +18,16 @@
 
 
 (defun mangle-full-record-name (entity)
-  (ppcre:regex-replace-all "::|\\W"
-                           (claw.spec:format-full-foreign-entity-name entity)
-                           "_"))
+  (if-let ((mangled (claw.spec:foreign-entity-mangled-name entity)))
+    mangled
+    (let* ((mangled
+             (substitute #\P #\* (claw.spec:format-full-foreign-entity-name entity)))
+           (mangled (substitute #\R #\&  mangled))
+           (mangled (substitute #\0 #\<  mangled))
+           (mangled (substitute #\1 #\>  mangled))
+           (mangled (ppcre:regex-replace-all "[:\\(\\),\\s]+" mangled "W")))
+      (ppcre:regex-replace-all "\\W" mangled "_"))))
+
 
 (defun adapt-reporter (entity reporter)
   (make-instance 'adapted-function
@@ -154,21 +161,21 @@
 
 
 (defun adapt-function-class-instance-ctor (entity)
-  (let ((full-name (claw.spec:format-full-foreign-entity-name entity))
-        (function-proto (claw.spec:foreign-entity-value
+  (let ((function-proto (claw.spec:foreign-entity-value
                          (first (claw.spec:foreign-entity-arguments entity)))))
     (make-instance 'adapted-function
-                   :name (string+ (claw.spec:foreign-entity-mangled-name entity) "_ctor")
+                   :name (string+ (mangle-full-record-name entity) "_ctor")
                    :namespace (claw.spec:foreign-entity-namespace entity)
                    :parameters (list (parameter "__claw_callback_"
                                                 (pointer function-proto)))
                    :result-type (void-pointer)
-                   :body (format nil "return new ~A(__claw_callback_);" full-name))))
+                   :body (format nil "return new ~A(__claw_callback_);"
+                                 (claw.spec:format-full-foreign-entity-name entity)))))
 
 
 (defun adapt-function-class-instance-dtor (entity)
   (make-instance 'adapted-function
-                 :name (string+ (claw.spec:foreign-entity-mangled-name entity) "_dtor")
+                 :name (string+ (mangle-full-record-name entity) "_dtor")
                  :namespace (claw.spec:foreign-entity-namespace entity)
                  :parameters (list (parameter "__claw_function_class_instance_"
                                               (pointer entity)))

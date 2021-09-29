@@ -633,12 +633,15 @@
 
 
 (defmethod format-foreign-entity-c-name ((this foreign-function-prototype) &key name)
-  (format nil "~A(~@[~A ~]~@[~A~])(~{~A~^, ~})"
-          (format-foreign-entity-c-name (foreign-function-result-type this))
-          (when-let ((owner (foreign-owner this)))
-            (format-full-foreign-entity-name owner))
-          name
-          (mapcar #'format-foreign-entity-c-name (foreign-function-parameters this))))
+  (let ((full-name (format nil "~@[~A ~]~@[~A~]"
+                           (when-let ((owner (foreign-owner this)))
+                             (format-full-foreign-entity-name owner))
+                           name)))
+    (format nil "~A~@[(~A)~](~{~A~^, ~})"
+            (format-foreign-entity-c-name (foreign-function-result-type this))
+            (unless (emptyp full-name)
+              full-name)
+            (mapcar #'format-foreign-entity-c-name (foreign-function-parameters this)))))
 
 
 (defmethod format-foreign-entity-c-name ((this foreign-struct)

@@ -166,10 +166,12 @@
     (make-instance 'adapted-function
                    :name (string+ (mangle-full-record-name entity) "_ctor")
                    :namespace (claw.spec:foreign-entity-namespace entity)
-                   :parameters (list (parameter "__claw_callback_"
+                   :parameters (list (parameter "__claw_this_"
+                                                (pointer entity))
+                                     (parameter "__claw_callback_"
                                                 (pointer function-proto)))
                    :result-type (void-pointer)
-                   :body (format nil "return new ~A(__claw_callback_);"
+                   :body (format nil "return new (__claw_this_) ~A(__claw_callback_);"
                                  (claw.spec:format-full-foreign-entity-name entity)))))
 
 
@@ -177,10 +179,10 @@
   (make-instance 'adapted-function
                  :name (string+ (mangle-full-record-name entity) "_dtor")
                  :namespace (claw.spec:foreign-entity-namespace entity)
-                 :parameters (list (parameter "__claw_function_class_instance_"
+                 :parameters (list (parameter "__claw_this_"
                                               (pointer entity)))
                  :result-type (void)
-                 :body "delete __claw_function_class_instance_;"))
+                 :body "__claw_this_->~function();"))
 
 
 (defun generate-function-class-binding (entity)

@@ -465,6 +465,16 @@
   `(%by-changing ,@configuration))
 
 
+(defun %by-changing-postfix (from to)
+  (list (cons (format nil "~A$" from)
+              (lambda (name)
+                (string+ (subseq name 0 (- (length name) (length from))) to)))))
+
+
+(defun by-changing-postfix (configuration)
+  `(%by-changing-postfix ,@configuration))
+
+
 (defun %switch-package (package)
   (list (cons ".*" (lambda (name)
                      (setf *symbol-package* package)
@@ -569,6 +579,7 @@
      (eswitch (descriptor :test #'string=)
        ('in-pipeline #'in-pipeline)
        ('by-changing #'by-changing)
+       ('by-changing-postfix #'by-changing-postfix)
        ('by-replacing #'by-replacing)
        ('by-removing-prefixes #'by-removing-prefixes)
        ('by-removing-postfixes #'by-removing-postfixes)

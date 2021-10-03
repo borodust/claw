@@ -472,13 +472,15 @@
 
 
 (defmacro with-intricate-slots (type (&rest slots) instance &body body)
-  (once-only (instance)
-    `(symbol-macrolet (,@(loop for slot-def in slots
-                               collect (destructuring-bind (var-name &optional slot-name) slot-def
-                                         (let ((slot-name (or slot-name var-name)))
-                                           `(,var-name
-                                             (intricate-slot-value ,instance ',type ',slot-name))))))
-       ,@body)))
+  (if slots
+      (once-only (instance)
+        `(symbol-macrolet (,@(loop for slot-def in slots
+                                   collect (destructuring-bind (var-name &optional slot-name) slot-def
+                                             (let ((slot-name (or slot-name var-name)))
+                                               `(,var-name
+                                                 (intricate-slot-value ,instance ',type ',slot-name))))))
+           ,@body))
+      `(progn ,@body)))
 
 
 ;;;

@@ -113,7 +113,7 @@
            (%enveloped-entity ()
              (claw.spec:unqualify-foreign-entity (claw.spec:foreign-enveloped-entity entity)))
            (%enveloped-char-p ()
-             (let ((unwrapped (%enveloped-entity)))
+             (let ((unwrapped (claw.spec:unwrap-foreign-entity entity)))
                (and (typep unwrapped 'claw.spec:foreign-primitive)
                     (string= "char" (claw.spec:foreign-entity-name unwrapped)))))
            (%lisp-name ()

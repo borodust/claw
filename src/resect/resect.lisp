@@ -924,14 +924,15 @@
 
 
 (defmethod parse-declaration ((type (eql :function)) decl &key)
-  (if (starts-with-subseq +instantiation-prefix+ (%resect:declaration-name decl))
-      (on-post-parse
-        (let ((template-mangled-name (subseq (%resect:declaration-name decl)
-                                             (length +instantiation-prefix+))))
-          (if-let ((template (gethash template-mangled-name *mangled-table*)))
-            (register-instantiated-function template decl)
-            (warn "Template with mangled name ~A not found" template-mangled-name))))
-      (register-function decl)))
+  (unless (eq :static (%resect:function-storage-class decl))
+    (if (starts-with-subseq +instantiation-prefix+ (%resect:declaration-name decl))
+        (on-post-parse
+          (let ((template-mangled-name (subseq (%resect:declaration-name decl)
+                                               (length +instantiation-prefix+))))
+            (if-let ((template (gethash template-mangled-name *mangled-table*)))
+              (register-instantiated-function template decl)
+              (warn "Template with mangled name ~A not found" template-mangled-name))))
+        (register-function decl))))
 
 
 (defmethod parse-type (category (kind (eql :function-prototype)) type)
@@ -1021,7 +1022,8 @@
 (defmethod parse-declaration ((kind (eql :variable)) declaration &key)
   (let ((type (parse-type-by-category (%resect:variable-type declaration)))
         (name (%resect:declaration-name declaration)))
-    (unless (starts-with-subseq +instantiation-prefix+ name)
+    (unless (or (starts-with-subseq +instantiation-prefix+ name)
+                (eq :static (%resect:variable-storage-class declaration)))
       (let ((value (case (%resect:variable-kind declaration)
                      (:int (%resect:variable-to-int declaration))
                      (:float (%resect:variable-to-float declaration))

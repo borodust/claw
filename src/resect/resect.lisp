@@ -893,8 +893,29 @@
       entity)))
 
 
+(defun extract-function-instantiated-arguments (template result-type parameters)
+  (declare (ignore parameters))
+  ;; TODO: figure out all template arguments from instantiated function
+  ;; but for now result-type will suffice (it might be non-deducible when
+  ;; we create adapted function for it)
+
+
+  (let ((template-parameters (foreign-entity-parameters template))
+        (template-result-type (unwrap-foreign-entity (foreign-function-result-type template))))
+    ;; TODO: only simplest case here, but we really should dig into type and
+    ;; recreate the whole thing
+    (when (and (= 1 (length template-parameters))
+               (or (typep template-result-type 'foreign-entity-parameter)
+                   (and (typep template-result-type 'unrecognized-type)
+                        (string= (foreign-entity-name (first template-parameters)) (foreign-entity-name template-result-type)))))
+      (list (make-instance 'foreign-entity-argument
+                           :parameter (first template-parameters)
+                           :value result-type)))))
+
+
 (defun register-instantiated-function (template decl)
-  (let ((params (parse-parameters (%resect:function-parameters decl))))
+  (let ((result-type (parse-result-type decl))
+        (params (parse-parameters (%resect:function-parameters decl))))
     (if (typep template 'foreign-method)
         (register-entity 'foreign-method
                          :id (%resect:declaration-id decl)
@@ -903,12 +924,14 @@
                          :source (foreign-entity-source template)
                          :mangled (ensure-mangled decl)
                          :location (foreign-entity-location template)
-                         :result-type (parse-result-type decl)
+                         :result-type result-type
                          :parameters (rest params)
                          :owner (foreign-enveloped-entity (first params))
                          :variadic (foreign-function-variadic-p template)
                          :entity-parameters nil
-                         :entity-arguments nil)
+                         :entity-arguments (extract-function-instantiated-arguments template
+                                                                                    result-type
+                                                                                    params))
         (register-entity 'foreign-function
                          :id (%resect:declaration-id decl)
                          :name (foreign-entity-name template)
@@ -916,11 +939,13 @@
                          :source (foreign-entity-source template)
                          :mangled (ensure-mangled decl)
                          :location (foreign-entity-location template)
-                         :result-type (parse-result-type decl)
+                         :result-type result-type
                          :parameters params
                          :variadic (foreign-function-variadic-p template)
                          :entity-parameters nil
-                         :entity-arguments nil))))
+                         :entity-arguments (extract-function-instantiated-arguments template
+                                                                                    result-type
+                                                                                    params)))))
 
 
 (defmethod parse-declaration ((type (eql :function)) decl &key)

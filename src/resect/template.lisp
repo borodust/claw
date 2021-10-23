@@ -141,13 +141,25 @@
 
 (defun reconstruct-typename (type-name)
   (let ((name (ppcre:regex-replace "typename " type-name "")))
-    (labels ((%reconstruct-replace (groups)
+    (labels ((%split-inner (group)
+               (ppcre:split "::" group))
+             (%join-inner (types)
+               (format nil "~{~A~^::~}" types))
+             (%reconstruct-replace (groups)
                (loop for group in groups
                      collect (if (listp group)
                                  (%reconstruct-replace group)
-                                 (if-let (replacement (gethash group *template-argument-table*))
-                                   replacement
-                                   group)))))
+                                 (%join-inner
+                                  (loop for inner-group in (%split-inner group)
+                                        for (constp name) = (if (starts-with-subseq "const " inner-group)
+                                                                (list t (ppcre:regex-replace "const\\s*" inner-group ""))
+                                                                (list nil inner-group))
+                                        collect (format nil "~@[~A~]~A"
+                                                        (when constp
+                                                          "const ")
+                                                        (if-let (replacement (gethash name *template-argument-table*))
+                                                          replacement
+                                                          name))))))))
       (join-groups-into-template-name
        (%reconstruct-replace
         (split-template-name-into-groups name))))))

@@ -147,6 +147,7 @@
                                   entity
                                   (claw.spec:format-full-foreign-entity-name entity))
                                  param-names))))
+
     (format-location-comment entity stream)
     (cond
       ((and

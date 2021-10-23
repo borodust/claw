@@ -23,7 +23,7 @@
 
 
 (defun make-declaration-for-instantiation (decl)
-  (let* ((params (mapcar #'%resect:declaration-name (extract-decl-parameters decl)))
+  (let* ((params (remove-if #'emptyp (mapcar #'%resect:declaration-name (extract-decl-parameters decl))))
          (location (%resect:declaration-location decl))
          (location-string (format nil "~A:~A:~A"
                                   (%resect:location-name location)
@@ -55,10 +55,7 @@
                                                 rec
                                                 (%resect:declaration-namespace declaration)))))
       (setf
-       (gethash (format nil "~A~A"
-                        (%resect:declaration-id declaration)
-                        (format-template-argument-string template-args))
-                *instantiated-functions*)
+       (gethash (%resect:declaration-id declaration) *instantiated-functions*)
        (list (%resect:declaration-name declaration) reconstructred)))))
 
 
@@ -68,7 +65,7 @@
 
 
 (defmethod prepare-declaration :around (kind declaration &key &allow-other-keys)
-  (declare (ignore kind))
+  (declare (ignore kind declaration))
   (call-next-method))
 
 ;;;

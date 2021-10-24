@@ -394,7 +394,11 @@
          (owner (parse-owner decl))
          (value-alist))
     (resect:docollection (decl (%resect:enum-constants decl))
-      (push (cons (%resect:declaration-name decl) (%resect:enum-constant-value decl)) value-alist))
+      (push (cons (%resect:declaration-name decl)
+                  (if (%resect:enum-constant-unsigned-p decl)
+                      (%resect:enum-constant-unsigned-value decl)
+                      (%resect:enum-constant-value decl)))
+            value-alist))
     (multiple-value-bind (entity registeredp)
         (register-entity 'foreign-enum
                          :id (decorate-id-if-instantiated-owner decl owner)

@@ -17,7 +17,7 @@
         (anonymous-branch-p owner))))
 
 
-(defun mangle-full-record-name (entity)
+(defun mangle-entity-name (entity)
   (if-let ((mangled (claw.spec:foreign-entity-mangled-name entity)))
     mangled
     (let* ((mangled
@@ -31,7 +31,7 @@
 
 (defun adapt-reporter (entity reporter)
   (make-instance 'adapted-function
-                 :name (format nil "~A_~A" reporter (mangle-full-record-name entity))
+                 :name (format nil "~A_~A" reporter (mangle-entity-name entity))
                  :namespace (claw.spec:foreign-entity-namespace entity)
                  :parameters nil
                  :result-type (unsigned-long-long)
@@ -50,7 +50,7 @@
                   (typep unaliased 'claw.spec:foreign-const-qualifier))
         (make-instance 'adapted-function
                        :name (format nil "set_~A_~A"
-                                     (mangle-full-record-name record)
+                                     (mangle-entity-name record)
                                      field-name)
                        :namespace (claw.spec:foreign-entity-namespace record)
                        :parameters (list (parameter "__claw_this_" (pointer record))
@@ -80,7 +80,7 @@
                               field-type)))
         (make-instance 'adapted-function
                        :name (format nil "get_~A_~A"
-                                     (mangle-full-record-name record)
+                                     (mangle-entity-name record)
                                      field-name)
                        :namespace (claw.spec:foreign-entity-namespace record)
                        :parameters (list (parameter "__claw_this_" (pointer record)))
@@ -164,7 +164,7 @@
   (let ((function-proto (claw.spec:foreign-entity-value
                          (first (claw.spec:foreign-entity-arguments entity)))))
     (make-instance 'adapted-function
-                   :name (string+ (mangle-full-record-name entity) "_ctor")
+                   :name (string+ (mangle-entity-name entity) "_ctor")
                    :namespace (claw.spec:foreign-entity-namespace entity)
                    :parameters (list (parameter "__claw_this_"
                                                 (pointer entity))
@@ -177,7 +177,7 @@
 
 (defun adapt-function-class-instance-dtor (entity)
   (make-instance 'adapted-function
-                 :name (string+ (mangle-full-record-name entity) "_dtor")
+                 :name (string+ (mangle-entity-name entity) "_dtor")
                  :namespace (claw.spec:foreign-entity-namespace entity)
                  :parameters (list (parameter "__claw_this_"
                                               (pointer entity)))

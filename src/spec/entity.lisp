@@ -505,7 +505,7 @@
 ;;;
 ;;; VARIABLE
 ;;;
-(defclass foreign-variable (identified named foreign-entity)
+(defclass foreign-variable (identified named declared foreign-entity)
   ((value :initarg :value
           :initform (error ":value missing")
           :reader foreign-entity-value)

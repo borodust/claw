@@ -118,7 +118,8 @@
                              (:file "function")
                              (:file "class")
                              (:file "template")
-                             (:file "alias")))))
+                             (:file "alias")
+                             (:file "variable")))))
 
 
 (asdf:defsystem :claw

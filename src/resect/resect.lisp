@@ -1050,7 +1050,8 @@
 ;;;
 (defmethod parse-declaration ((kind (eql :variable)) declaration &key)
   (let ((type (parse-type-by-category (%resect:variable-type declaration)))
-        (name (%resect:declaration-name declaration)))
+        (name (%resect:declaration-name declaration))
+        (location (make-declaration-location declaration)))
     (unless (or (starts-with-subseq +instantiation-prefix+ name)
                 (eq :static (%resect:variable-storage-class declaration)))
       (let ((value (case (%resect:variable-kind declaration)
@@ -1058,19 +1059,22 @@
                      (:float (%resect:variable-to-float declaration))
                      (:string (%resect:variable-to-string declaration))
                      (t nil))))
-        (if (%resect:type-const-qualified-p (%resect:variable-type declaration))
+        (if (and (%resect:type-const-qualified-p (%resect:variable-type declaration))
+                 (not (eq :external (%resect:declaration-linkage declaration))))
             (register-entity 'foreign-constant
                              :id name
                              :name name
                              :namespace (unless-empty
                                          (%resect:declaration-namespace declaration))
                              :source (%resect:declaration-source declaration)
-                             :value value)
+                             :value value
+                             :location location)
             (register-entity 'foreign-variable
                              :id (%resect:declaration-id declaration)
                              :name name
                              :namespace (unless-empty
                                          (%resect:declaration-namespace declaration))
+                             :location location
                              :source (%resect:declaration-source declaration)
                              :value value
                              :type type

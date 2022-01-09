@@ -137,7 +137,7 @@
                                  (cond
                                    ((and (= (length dimensions) 1) (%enveloped-char-p))
                                     (%type :string))
-                                   (dimensions
+                                   ((and dimensions *recognize-arrays*)
                                     (list (%type :array)
                                           (entity->cffi-type
                                            (%enveloped-entity)

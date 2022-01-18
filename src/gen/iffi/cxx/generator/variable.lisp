@@ -55,7 +55,9 @@
     (export-symbol decorated-name)
     `((declaim (inline ,getter-name))
       (cffi:defcfun (,getter-cname ,getter-name)
-          ,(entity->cffi-type (adapted-function-result-type adapted-getter)))
+          ,(entity->cffi-type (adapted-function-result-type adapted-getter))
+        ,(claw.spec:format-foreign-location
+          (claw.spec:foreign-entity-location entity)))
       (declaim (inline ,accessor-name))
       (defun ,accessor-name ()
         (,getter-name))
@@ -67,6 +69,8 @@
                                        'iffi-variable-setter$ name)))
             (with-gensyms (value)
               `((cffi:defcfun (,setter-cname ,setter-name) :void
+                  ,(claw.spec:format-foreign-location
+                    (claw.spec:foreign-entity-location entity))
                   (,name ,(entity->cffi-type (claw.spec:foreign-enveloped-entity
                                               (first (adapted-function-parameters adapted-setter))))))
                 (declaim (inline (setf ,accessor-name)))

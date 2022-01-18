@@ -67,7 +67,8 @@
                                        'iffi-variable-setter$ name)))
             (with-gensyms (value)
               `((cffi:defcfun (,setter-cname ,setter-name) :void
-                  (,name ,(entity->cffi-type (first (adapted-function-parameters adapted-setter)))))
+                  (,name ,(entity->cffi-type (claw.spec:foreign-enveloped-entity
+                                              (first (adapted-function-parameters adapted-setter))))))
                 (declaim (inline (setf ,accessor-name)))
                 (defun (setf ,accessor-name) (,value)
                   (,setter-name ,value))))))

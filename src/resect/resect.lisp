@@ -50,9 +50,9 @@
   (let ((result (if (string= +va-list-id+ (%resect:type-name type))
                     (register-custom-primitive +va-list-id+)
                     (call-next-method))))
-    (when (%resect:type-const-qualified-p type)
-      (setf result (const result)))
-    result))
+    (if (%resect:type-const-qualified-p type)
+        (const result)
+        result)))
 
 
 (defun write-uber-header (headers path defines &optional text)

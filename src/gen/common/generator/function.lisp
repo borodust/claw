@@ -146,8 +146,8 @@
                                  (decorate-if-instantiated-function
                                   entity
                                   (claw.spec:format-full-foreign-entity-name entity))
-                                 param-names))))
-
+                                 param-names)))
+         (unconsted-result-type (unconst-adapted-result-type result-type)))
     (format-location-comment entity stream)
     (cond
       ((and
@@ -155,8 +155,7 @@
         (string= (claw.spec:foreign-entity-name result-type) "void"))
        (format stream "~A;" invocation))
       (result-type-adapted-from
-       (let* ((unconsted-result-type (unconst-adapted-result-type result-type))
-              (unconsted-result-type-c-name (claw.spec:format-foreign-entity-c-name
+       (let* ((unconsted-result-type-c-name (claw.spec:format-foreign-entity-c-name
                                              unconsted-result-type)))
          (if (typep result-type-adapted-from 'claw.spec:foreign-reference)
              (format stream "return (~A) ~@[~A~](&~A);"
@@ -171,6 +170,10 @@
                          invocation)
                  (format stream "(*__claw_result_) = ~A;~%return __claw_result_;"
                          invocation)))))
+      ((typep unconsted-result-type 'claw.spec:foreign-pointer)
+       (format stream "return (~A) ~A;"
+               (claw.spec:format-foreign-entity-c-name result-type)
+               invocation))
       (t (format stream "return ~A;" invocation)))))
 
 

@@ -654,7 +654,10 @@
                    (not destructor-found))
           (setf destructor-found t))
         (when (and (publicp method-decl)
-                   (not (and pure-virtual-found (or destructor-p constructor-p)))
+                   (not (and pure-virtual-found
+                             (or constructor-p
+                                 (and destructor-p
+                                      (not (%resect:method-virtual-p method-decl))))))
                    (not deleted-p))
           (let* ((result-type (ensure-const-type-if-needed
                                (%resect:method-result-type method-decl)

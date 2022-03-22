@@ -29,7 +29,7 @@
                                includes
                                frameworks
                                :c++
-                               :c++11
+                               :c++20
                                target
                                intrinsics
                                :diagnostics nil

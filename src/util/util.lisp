@@ -90,7 +90,7 @@
 
 
 (defun substring-trim (name start-idx end-idx)
-  (string-trim '(#\Space #\Tab #\Newline) (subseq name start-idx end-idx)))
+  (string-trim '(#\Space #\Tab #\Newline #\Return) (subseq name start-idx end-idx)))
 
 
 (defun split-template-name-into-groups (name)
@@ -240,6 +240,23 @@
 ;;;
 ;;; INCLUDE PATHS
 ;;;
+(defun trim-terminal-output (output)
+  (string-trim '(#\Tab #\Space #\Newline #\Return) output))
+
+
+(defun convert-msys-path (path)
+  (trim-terminal-output
+   (uiop:run-program (format nil "cygpath -m '~A'" (namestring path))
+                     :output :string :error-output :string)))
+
+
+(defun mingwp ()
+  (and (featurep :windows)
+       (search "MINGW" (trim-terminal-output
+                        (uiop:run-program "echo %MSYSTEM%" :force-shell t :output :string :error-output :string)))
+       t))
+
+
 (defun dump-include-paths (lang &optional (executable "gcc"))
   (handler-case
       (let* ((command (format nil "echo | ~A -x~A ~@[~A~] -E -v -"
@@ -252,7 +269,10 @@
                                         :output out :error-output out)))
              (bounds (third (multiple-value-list (ppcre:scan +path-search-regex+ paths)))))
         (when bounds
-          (ppcre:split "(\\r|\\n)+\\s*" (subseq paths (aref bounds 0) (aref bounds 1)))))
+          (let ((paths (ppcre:split "(\\r|\\n)+\\s*" (subseq paths (aref bounds 0) (aref bounds 1)))))
+            (if (mingwp)
+                (mapcar #'convert-msys-path paths)
+                paths))))
     (t (c)
       (warn "Failed to obtain `~A` search paths for language ~A: ~A" executable lang c)
       nil)))
@@ -288,9 +308,9 @@
 
 (defun dump-gcc-version (&optional (executable "gcc"))
   (handler-case
-      (string-trim '(#\Tab #\Space #\Newline)
-                   (with-output-to-string (out)
-                     (uiop:run-program (format nil "~A -dumpversion" executable) :output out)))
+      (trim-terminal-output
+       (with-output-to-string (out)
+         (uiop:run-program (format nil "~A -dumpversion" executable) :output out)))
     (t () "")))
 
 ;;;

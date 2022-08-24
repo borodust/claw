@@ -1,6 +1,11 @@
 (cl:defpackage :iffi
   (:use :cl :alexandria)
-  (:export #:defifun
+  (:export #:*allocator*
+           #:*allocator-expander*
+           #:*extricator*
+           #:*extricator-expander*
+
+           #:defifun
 
            #:defitype
            #:defirecord

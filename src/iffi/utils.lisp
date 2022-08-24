@@ -1,6 +1,15 @@
 (cl:in-package :iffi)
 
 
+(declaim (special *allocator* *extricator*))
+
+
+(defvar *allocator-expander* nil
+  "Can be bound via CLtL2 compiler-let to allow optimizing codegen in aligned-alloc")
+
+(defvar *extricator-expander* nil
+  "Can be bound via CLtL2 compiler-let to allow optimizing codegen in aligned-free")
+
 (defun find-quoted (value)
   (cond
     ((keywordp value) value)
@@ -9,10 +18,26 @@
 
 (defmacro initialize-iffi ()
   `(progn
-     (declaim (inline iffi::aligned-alloc iffi::aligned-free))
      ,@(cond
+         ((alexandria:featurep :iffi-custom-allocation)
+          `((defun iffi::aligned-alloc (byte-alignment byte-size)
+              (funcall *allocator* byte-alignment byte-size))
+
+            (define-compiler-macro iffi::aligned-alloc (byte-alignment byte-size)
+              (if *allocator-expander*
+                  (funcall *allocator-expander* byte-alignment byte-size)
+                  `(funcall *allocator* ,byte-alignment ,byte-size)))
+
+            (defun iffi::aligned-free (ptr)
+              (funcall *extricator* ptr))
+
+            (define-compiler-macro iffi::aligned-free (ptr)
+              (if *extricator-expander*
+                  (funcall *extricator-expander* ptr)
+                  `(funcall *extricator* ,ptr)))))
          ((cffi:foreign-symbol-pointer "aligned_alloc")
-          `((cffi:defcfun ("aligned_alloc" iffi::aligned-alloc) :pointer
+          `((declaim (inline iffi::aligned-alloc iffi::aligned-free))
+            (cffi:defcfun ("aligned_alloc" iffi::aligned-alloc) :pointer
               (byte-alignment :size)
               (byte-size :size))
 
@@ -20,7 +45,9 @@
               (cffi:foreign-free ptr))))
 
          ((cffi:foreign-symbol-pointer "_aligned_malloc")
-          `((declaim (inline iffi::%aligned-malloc))
+          `((declaim (inline iffi::%aligned-malloc
+                             iffi::aligned-alloc
+                             iffi::aligned-free))
             (cffi:defcfun ("_aligned_malloc" iffi::%aligned-malloc) :pointer
               (byte-size :size)
               (byte-alignment :size))

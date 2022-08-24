@@ -374,7 +374,10 @@
   (if-let ((quoted (find-quoted name)))
     (if-let ((intricate (find-intricate-record quoted)))
       `(aligned-alloc (intricate-alignment ,name) (* (intricate-size ,name) ,count))
-      whole)
+      (if-let ((type-alignment (ignore-errors (cffi:foreign-type-alignment quoted)))
+               (type-size (ignore-errors (cffi:foreign-type-size quoted))))
+        `(aligned-alloc ,type-alignment (* ,type-size ,count))
+        whole))
     whole))
 
 

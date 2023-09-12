@@ -168,6 +168,8 @@
 (defun predefined-targets (&key (linux "gnu") (windows "msvc") (darwin "gnu"))
   `(((:and :x86-64 :linux) . ,(string+ "x86_64-pc-linux-" linux))
     ((:and :x86 :linux) . ,(string+ "i686-pc-linux-" linux))
+    ((:and :ppc64 :linux :big-endian) . ,(string+ "powerpc64-pc-linux-" linux))
+    ((:and :ppc64 :linux :little-endian) . ,(string+ "powerpc64le-pc-linux-" linux))
     ((:and :x86-64 :windows) . ,(string+ "x86_64-pc-windows-" windows))
     ((:and :x86-64 :windows) . ,(string+ "i686-pc-windows-" windows))
     ((:and :x86-64 :darwin) . ,(string+ "x86_64-apple-darwin-" darwin))

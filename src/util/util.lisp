@@ -64,6 +64,8 @@
 (define-constant +known-platforms+
     '("i686-pc-linux-gnu"
       "x86_64-pc-linux-gnu"
+      "powerpc64-pc-linux-gnu"
+      "powerpc64le-pc-linux-gnu"
       "i686-pc-windows-msvc"
       "x86_64-pc-windows-msvc"
       "i686-pc-windows-gnu"
@@ -371,6 +373,8 @@
       #+x86-64 "x86_64"
       #+(and (not (or x86-64 freebsd)) x86) "i686"
       #+(and (not x86-64) x86 freebsd) "i386"
+      #+(and ppc64 big-endian) "powerpc64"
+      #+(and ppc64 little-endian) "powerpc64le"
       #+arm "arm"))
 
 

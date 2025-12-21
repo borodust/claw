@@ -19,6 +19,7 @@
 
            #:foreign-envelope-p
            #:foreign-enveloped-entity
+           #:rewrap-foreign-envelope
 
            #:foreign-aligned-p
            #:foreign-entity-bit-size
@@ -240,6 +241,9 @@
 
 (defun foreign-envelope-p (entity)
   (typep entity 'envelope))
+
+
+(defgeneric rewrap-foreign-envelope (envelope type))
 
 
 (defmethod print-object ((o envelope) s)
@@ -473,6 +477,17 @@
 (defclass foreign-alias (declared identified named ownable foreign-entity envelope) ())
 
 
+(defmethod rewrap-foreign-envelope ((entity foreign-alias) value)
+  (make-instance 'foreign-alias
+                 :id (foreign-entity-id entity)
+                 :owner (foreign-owner entity)
+                 :name (foreign-entity-name entity)
+                 :namespace (foreign-entity-namespace entity)
+                 :mangled (foreign-entity-mangled-name entity)
+                 :location (foreign-entity-location entity)
+                 :enveloped value))
+
+
 ;;;
 ;;; ARRAY
 ;;;
@@ -487,11 +502,20 @@
     (setf dimensions (ensure-list size))))
 
 
+(defmethod rewrap-foreign-envelope ((entity foreign-array) value)
+  (make-instance 'foreign-array
+                 :dimensions (foreign-array-dimensions entity)
+                 :enveloped value))
+
+
 ;;;
 ;;; POINTER
 ;;;
 (defclass foreign-pointer (foreign-entity envelope) ())
 
+
+(defmethod rewrap-foreign-envelope ((entity foreign-pointer) value)
+  (make-instance 'foreign-pointer :enveloped value))
 
 ;;;
 ;;; REFERENCE
@@ -501,6 +525,11 @@
              :initform nil
              :reader foreign-reference-rvalue-p)))
 
+
+(defmethod rewrap-foreign-envelope ((entity foreign-reference) value)
+  (make-instance 'foreign-reference
+                 :rvalue (foreign-reference-rvalue-p entity)
+                 :enveloped value))
 
 ;;;
 ;;; VARIABLE

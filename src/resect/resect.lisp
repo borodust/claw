@@ -581,8 +581,8 @@
            ;; better to use lexer in resect
            (and decl (starts-with-subseq "const " (%resect:declaration-source decl)))))
      (if (foreign-envelope-p entity)
-         (make-instance (class-of entity)
-                        :enveloped (const (claw.spec:foreign-enveloped-entity entity)))
+         (claw.spec:rewrap-foreign-envelope entity
+                                            (const (claw.spec:foreign-enveloped-entity entity)))
          (const entity)))
     (t entity)))
 

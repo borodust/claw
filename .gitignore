@@ -1,2 +1,5 @@
 # system dependent junk
 local/
+
+**/*\.fasl
+**/*\.lx64fsl

@@ -287,23 +287,31 @@
 (defun list-all-known-paths ()
   (let ((lc-all (uiop:getenv "LC_ALL")))
     (setf (uiop:getenv "LC_ALL") "C")
-    (unwind-protect
-         (remove-duplicates
-          (append (unless (emptyp (dump-gcc-version "clang"))
-                    (dump-include-paths "c" "clang"))
-                  (unless (emptyp (dump-gcc-version "clang++"))
-                    (dump-include-paths "c++" "clang++"))
-                  (unless (emptyp (dump-gcc-version))
-                    (append (dump-include-paths "c")
-                            (dump-include-paths "c++")))
-                  (unless (emptyp (dump-gcc-version "x86_64-w64-mingw32-gcc"))
-                    (dump-include-paths "c" "x86_64-w64-mingw32-gcc"))
-                  (unless (emptyp (dump-gcc-version "x86_64-w64-mingw32-g++"))
-                    (dump-include-paths "c++" "x86_64-w64-mingw32-g++")))
-          :test #'equal
-          :from-end t)
-      (when lc-all
-        (setf (uiop:getenv "LC_ALL") lc-all)))))
+    (flet ((%process-paths (paths)
+             (remove-duplicates
+              (mapcar (lambda (path)
+                        (uiop:native-namestring (uiop:truename* path)))
+                      paths)
+              :test #'equal)))
+      (unwind-protect
+           (%process-paths
+            (append
+             ;; c++ - first
+             (unless (emptyp (dump-gcc-version "clang++"))
+               (dump-include-paths "c++" "clang++"))
+             (unless (emptyp (dump-gcc-version))
+               (dump-include-paths "c++"))
+             (unless (emptyp (dump-gcc-version "x86_64-w64-mingw32-g++"))
+               (dump-include-paths "c++" "x86_64-w64-mingw32-g++"))
+             ;; c - last
+             (unless (emptyp (dump-gcc-version))
+               (dump-include-paths "c"))
+             (unless (emptyp (dump-gcc-version "clang"))
+               (dump-include-paths "c" "clang"))
+             (unless (emptyp (dump-gcc-version "x86_64-w64-mingw32-gcc"))
+               (dump-include-paths "c" "x86_64-w64-mingw32-gcc"))))
+        (when lc-all
+          (setf (uiop:getenv "LC_ALL") lc-all))))))
 
 
 (defun list-all-known-include-paths ()

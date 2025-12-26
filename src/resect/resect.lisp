@@ -640,7 +640,7 @@
                  (%resect:method-pure-virtual-p method-decl))
         (setf pure-virtual-found t)))
     (resect:docollection (method-decl (%resect:record-methods record-decl))
-      (let* ((deleted-p (search "= delete" (%resect:declaration-source method-decl)))
+      (let* ((deleted-p (%resect:method-deleted-p method-decl))
              (pure-method-name (remove-template-argument-string
                                 (%resect:declaration-name method-decl)))
              (pure-entity-name (remove-template-argument-string

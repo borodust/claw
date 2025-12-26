@@ -78,6 +78,7 @@
            #:foreign-method
            #:foreign-method-static-p
            #:foreign-method-const-p
+           #:foreign-method-deleted-p
 
            #:foreign-variable
            #:foreing-variable-type
@@ -468,7 +469,10 @@
              :reader foreign-method-static-p)
    (const-p :initarg :const
              :initform nil
-             :reader foreign-method-const-p)))
+             :reader foreign-method-const-p)
+   (deleted-p :initarg :deleted
+              :initform nil
+              :reader foreign-method-deleted-p)))
 
 
 ;;;

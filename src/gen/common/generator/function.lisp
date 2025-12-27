@@ -36,7 +36,7 @@
 
 (defmethod adapt-type ((this claw.spec:foreign-alias))
   (if (alias-adaptable-p this)
-      (values (make-instance 'claw.spec:foreign-pointer :enveloped this) this)
+      (adapt-type (claw.spec:unalias-foreign-entity this))
       (values this nil)))
 
 

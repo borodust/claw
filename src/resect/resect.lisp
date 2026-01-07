@@ -731,7 +731,8 @@
 (defun parse-fields (entity decl)
   (let ((*current-owner* entity)
         fields)
-    (resect:docollection (field-decl (%resect:type-fields (%resect:declaration-type decl)))
+    ;; FIXME: migrate to type-fields
+    (resect:docollection (field-decl (%resect:record-fields decl))
       (when (publicp field-decl)
         (let ((field-type (%resect:declaration-type field-decl)))
           (push (make-instance 'foreign-record-field
@@ -743,9 +744,9 @@
                                            field-decl)
                                :bit-size (%resect:type-size field-type)
                                :bit-alignment (%resect:type-alignment field-type)
-                               :bit-offset (%resect:field-offset field-decl)
-                               :bitfield-p (%resect:field-bitfield-p field-decl)
-                               :bit-width (%resect:field-width field-decl))
+                               :bit-offset (%resect:field-declaration-offset field-decl)
+                               :bitfield-p (%resect:field-declaration-bitfield-p field-decl)
+                               :bit-width (%resect:field-declaration-width field-decl))
                 fields))))
     (setf (fields-of entity) (nreverse fields))
     (ensure-inherited-fields entity)))
@@ -793,7 +794,11 @@
                 (parse-fields entity decl)))
             (register-instantiated entity decl)
             (on-post-parse
-              (parse-methods entity decl))))
+              (parse-methods entity decl)
+              (let ((root-template (%resect:declaration-root-template decl)))
+                (unless (cffi:null-pointer-p root-template)
+                  (resect:docollection (type (%resect:declaration-template-specializations root-template))
+                    (parse-type-by-category type)))))))
         (find-instantiated-type-from-owner entity)))))
 
 

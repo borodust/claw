@@ -74,14 +74,22 @@
 ;;; FUNCTION
 ;;;
 (defun function-parameterized-p (function)
-  (let ((name (claw.spec:foreign-entity-name function)))
-    (or (parameterizedp function)
-        (parameterizedp (claw.spec:foreign-function-result-type function))
-        (loop for param in (claw.spec:foreign-function-parameters function)
+  (labels ((owner-parameterized-p (entity)
+             (when-let ((owner (claw.spec:foreign-owner entity)))
+               (if (parameterizedp owner)
+                   t
+                   owner))))
+    (let ((name (claw.spec:foreign-entity-name function)))
+      (or (parameterizedp function)
+          (parameterizedp (claw.spec:foreign-function-result-type function))
+          (loop for param in (claw.spec:foreign-function-parameters function)
                 thereis (parameterizedp (claw.spec:foreign-enveloped-entity param)))
-        (starts-with-subseq "operator type-parameter" name)
-        (starts-with-subseq "operator new" name)
-        (starts-with-subseq "operator delete" name))))
+          (when (or (claw.spec:foreign-constructor-p function)
+                    (claw.spec:foreign-destructor-p function))
+            (owner-parameterized-p function))
+          (starts-with-subseq "operator type-parameter" name)
+          (starts-with-subseq "operator new" name)
+          (starts-with-subseq "operator delete" name)))))
 
 
 (defmethod generate-binding ((generator iffi-generator)

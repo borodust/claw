@@ -84,18 +84,6 @@
 
 (defgeneric reconstruct-type (kind type))
 
-(defun reconstruct-decl-name (decl)
-  (let ((owners (loop for owner = (%resect:declaration-owner decl)
-                        then (%resect:declaration-owner owner)
-                      until (cffi:null-pointer-p owner)
-                      collect (%resect:declaration-name decl)))
-        (namespace (%resect:declaration-namespace decl)))
-    (format nil "~@[~A::~]~{~A~^::~}~A"
-            (unless (emptyp namespace)
-              namespace)
-            (nreverse owners)
-            (%resect:declaration-name decl))))
-
 
 (defun reconstruct-type-name (type)
   (let ((decl (%resect:type-declaration type))
@@ -103,11 +91,7 @@
     (if (cffi:null-pointer-p decl)
         (let ((reconstructed (reconstruct-type :template-parameter type)))
           (or reconstructed type-name))
-        (format nil "~@[~A ~]~A"
-                (when (or (starts-with "const " type-name)
-                          (%resect:type-const-qualified-p type))
-                  "const")
-                (reconstruct-decl-name decl)))))
+        type-name)))
 
 
 (defun reconstruct-from-type (type)

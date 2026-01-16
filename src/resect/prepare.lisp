@@ -46,7 +46,7 @@
 
 (defun register-function-if-instantiable (declaration)
   (when-let ((template-args (instantiatablep declaration)))
-    (when-let ((reconstructred (loop for set in template-args
+    (when-let ((reconstructed (loop for set in template-args
                                      for rec = (apply #'reconstruct-templated-function
                                                       declaration
                                                       set)
@@ -56,7 +56,7 @@
                                                 (%resect:declaration-namespace declaration)))))
       (setf
        (gethash (%resect:declaration-id declaration) *instantiated-functions*)
-       (list (%resect:declaration-name declaration) reconstructred)))))
+       (list (%resect:declaration-name declaration) reconstructed)))))
 
 
 (defgeneric prepare-declaration (kind declaration &key &allow-other-keys)

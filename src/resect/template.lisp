@@ -85,13 +85,14 @@
 (defgeneric reconstruct-type (kind type))
 
 
-(defun reconstruct-type-name (type)
-  (let ((decl (%resect:type-declaration type))
-        (type-name (%resect:type-name type)))
-    (if (cffi:null-pointer-p decl)
-        (let ((reconstructed (reconstruct-type :template-parameter type)))
-          (or reconstructed type-name))
-        type-name)))
+(defun reconstruct-type-name-no-params (type)
+  (let* ((decl (%resect:type-declaration type))
+         (type-name (%resect:type-name type))
+         (reconstructed (if (cffi:null-pointer-p decl)
+                            (let ((reconstructed (reconstruct-type :template-parameter type)))
+                              (or reconstructed type-name))
+                            type-name)))
+    (ppcre:regex-replace-all "<.*>" reconstructed "")))
 
 
 (defun reconstruct-from-type (type)
@@ -161,7 +162,7 @@
                                                 replacement
                                                 literal))))
           (format nil "~A~@[~A~]"
-                  (reconstruct-type-name type)
+                  (reconstruct-type-name-no-params type)
                   (when literals
                     (format-template-argument-string reconstructed)))))))
 

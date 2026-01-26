@@ -791,13 +791,10 @@
             (unless (zerop (foreign-entity-bit-size entity))
               (on-post-parse
                 (parse-fields entity decl)))
+            (parse-template-instantiations decl)
             (register-instantiated entity decl)
             (on-post-parse
-              (parse-methods entity decl)
-              (let ((root-template (%resect:declaration-root-template decl)))
-                (unless (cffi:null-pointer-p root-template)
-                  (resect:docollection (type (%resect:declaration-template-specializations root-template))
-                    (parse-type-by-category type)))))))
+              (parse-methods entity decl))))
         (find-instantiated-type-from-owner entity)))))
 
 
@@ -900,6 +897,7 @@
                          :entity-parameters (collect-entity-parameters decl)
                          :entity-arguments (collect-entity-arguments decl))
       (when newp
+        (parse-template-instantiations decl)
         (setf (gethash mangled-name *mangled-table*) entity))
       entity)))
 

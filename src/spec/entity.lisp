@@ -104,6 +104,7 @@
 
            #:foreign-constructor-p
            #:foreign-destructor-p
+           #:foreign-entity-owned-by-template-p
            #:format-foreign-location
            #:format-full-foreign-entity-name
            #:*tag-types*
@@ -748,3 +749,10 @@
   (loop for current = entity then (foreign-enveloped-entity current)
         while (typep current 'foreign-alias)
         finally (return current)))
+
+
+(defun foreign-entity-owned-by-template-p (entity)
+  (when-let ((owner (foreign-owner entity)))
+    (if (foreign-entity-template-p owner)
+        t
+        (foreign-entity-owned-by-template-p owner))))

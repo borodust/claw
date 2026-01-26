@@ -2,6 +2,7 @@
   (:use #:cl #:alexandria #:claw.util #:claw.spec)
   (:export #:ignore-functions
            #:ignore-names
+           #:ignore-sources
            #:ignore-some
            #:ignore-every
            #:ignore-not

@@ -35,9 +35,18 @@
 
 
 (defmethod adapt-type ((this claw.spec:foreign-alias))
-  (if (alias-adaptable-p this)
-      (adapt-type (claw.spec:unalias-foreign-entity this))
-      (values this nil)))
+  (cond
+    ;; types can be owned by partially specialized template entities,
+    ;; but defined fully still
+    ;; we need to get to an aliased type,
+    ;; so we wouldn't need to reference the alias through the template
+    ((claw.spec:foreign-entity-owned-by-template-p this)
+     (adapt-type (claw.spec:unalias-foreign-entity this)))
+
+    ((alias-adaptable-p this)
+     (adapt-type (claw.spec:unalias-foreign-entity this)))
+
+    (t (values this nil))))
 
 
 (defmethod adapt-type ((this claw.spec:foreign-function-prototype))

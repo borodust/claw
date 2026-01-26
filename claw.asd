@@ -49,6 +49,7 @@
                (:file "template")
                (:file "inspect")
                (:file "macro")
+               (:file "instantiation")
                (:file "prepare")
                (:file "resect")))
 

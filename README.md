@@ -16,12 +16,10 @@ To use `claw` you need:
 
 Steps:
 * Clone `claw`, `claw-utils` and `cl-resect` into `~/quicklisp/local-projects`
-* Build `libresect.so` by following instructions in `libresect` repo
+* Build `libresect.so` by following instructions in [`libresect`](https://github.com/borodust/libresect) repo
 
 #### Usage
-`claw` (`libclang` actually) has known problems on `SBCL`, so `CCL`
-recommended. You only need `CCL` to generate bindings. After that, generated
-bindings can be used anywhere `CFFI` works.
+`claw` itself is confirmed to work on `SBCL`, `CCL` and `ECL`. Generated bindings do not depend on `claw` system and can be used anywhere `CFFI` works.
 
 In repl:
 ```common-lisp
@@ -32,8 +30,12 @@ In repl:
 ```
 
 Now you can tinker with existing wrappers to play with `claw` beta version
-E.g. [claw-olm](https://github.com/borodust/claw-olm)
+E.g. [claw-git2](https://github.com/borodust/claw-git2)
 ```common-lisp
-(ql:quickload :claw-olm/wrapper)
-(claw:load-wrapper :claw-olm/wrapper)
+(ql:quickload :claw-git2/wrapper)
+(claw:load-wrapper :claw-git2)
+```
+To regen bindings:
+```common-lisp
+(claw:generate-wrapper :claw-git2)
 ```

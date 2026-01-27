@@ -349,7 +349,7 @@
       (:void (register-void))
       (:bool (register-primitive-type "bool"))
       (:unsigned-char (register-primitive-type "unsigned char"))
-      (:char (register-primitive-type "char"))
+      (:signed-char (register-primitive-type "signed char"))
       (:char16 (register-primitive-type "char16"))
       (:char32 (register-primitive-type "char32"))
       (:unsigned-short (register-primitive-type "unsigned short"))
@@ -605,6 +605,7 @@
     (when constructor-required
       (register-entity 'foreign-method
                        :id (format nil "~A_claw_ctor" entity-id)
+                       :kind :constructor
                        :name entity-name
                        :owner entity
                        :namespace entity-namespace
@@ -616,6 +617,7 @@
     (when destructor-required
       (register-entity 'foreign-method
                        :id (format nil "~A_claw_dtor" entity-id)
+                       :kind :destructor
                        :name (format nil "~~~A" (remove-template-argument-string entity-name))
                        :owner entity
                        :namespace entity-namespace
@@ -679,6 +681,12 @@
                 (register-entity 'foreign-method
                                  :id (postfix-decorate (%resect:declaration-id method-decl)
                                                        postfix)
+                                 :kind (cond
+                                         (constructor-p :constructor)
+                                         (destructor-p :destructor)
+                                         ((starts-with-subseq "operator" pure-method-name)
+                                          :operator)
+                                         (t :regular))
                                  :source (%resect:declaration-source method-decl)
                                  :name name
                                  :owner entity

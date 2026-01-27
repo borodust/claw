@@ -76,6 +76,7 @@
            #:foreign-function-parameters
 
            #:foreign-method
+           #:foreign-method-kind
            #:foreign-method-static-p
            #:foreign-method-const-p
            #:foreign-method-deleted-p
@@ -465,12 +466,15 @@
 
 
 (defclass foreign-method (foreign-function)
-  ((static-p :initarg :static
+  ((kind :initarg :kind
+        :initform :regular
+        :reader foreign-method-kind)
+   (static-p :initarg :static
              :initform nil
              :reader foreign-method-static-p)
    (const-p :initarg :const
              :initform nil
-             :reader foreign-method-const-p)
+            :reader foreign-method-const-p)
    (deleted-p :initarg :deleted
               :initform nil
               :reader foreign-method-deleted-p)))
@@ -591,14 +595,12 @@
 
 (defun foreign-constructor-p (entity)
   (and (typep entity 'foreign-method)
-       (equal (foreign-entity-name (foreign-owner entity))
-              (foreign-entity-name entity))))
+       (eq :constructor (foreign-method-kind entity))))
 
 
 (defun foreign-destructor-p (entity)
   (and (typep entity 'foreign-method)
-       (equal (string+ "~" (foreign-entity-name (foreign-owner entity)))
-              (foreign-entity-name entity))))
+       (eq :destructor (foreign-method-kind entity))))
 
 
 (defun format-full-foreign-entity-name (entity &key (include-method-owner t) (include-name t))

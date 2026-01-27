@@ -70,6 +70,14 @@
           (multiple-value-bind (method newp)
               (register-entity 'foreign-method
                                :id (%resect:type-method-id type-method)
+                               :kind (cond
+                                       (constructor-p
+                                        :constructor)
+                                       ((starts-with #\~ pure-method-name)
+                                        :destructor)
+                                       ((starts-with-subseq "operator" pure-method-name)
+                                        :operator)
+                                       (t :regular))
                                :source (%resect:type-method-source type-method)
                                :name (cond
                                        (constructor-p

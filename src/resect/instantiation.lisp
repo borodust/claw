@@ -55,32 +55,34 @@
   (let* ((record-decl (%resect:type-declaration record-type))
          (entity (parse-new-record-declaration (%resect:declaration-kind record-decl) record-decl)))
     (let ((*current-owner* entity))
-      (resect:docollection (method (%resect:type-methods record-type))
-        (let* ((method-type (%resect:type-method-type method))
-               (mangled-name (ensure-method-mangled-name method))
+      (resect:docollection (type-method (%resect:type-methods record-type))
+        (let* ((method-type (%resect:type-method-type type-method))
+               (mangled-name (ensure-method-mangled-name type-method))
                (pure-method-name (remove-template-argument-string
-                                  (%resect:type-method-name method)))
-               (pure-entity-name (remove-template-argument-string
+                                  (%resect:type-method-name type-method)))
+               (pure-record-name (remove-template-argument-string
                                   (foreign-entity-name entity)))
-               (constructor-p (string= pure-method-name pure-entity-name))
+               (constructor-p (string= pure-method-name pure-record-name))
                (result-type (ensure-const-type-if-needed
                              (%resect:function-proto-result-type method-type)
                              (parse-type-by-category
                               (%resect:function-proto-result-type method-type)))))
           (multiple-value-bind (method newp)
               (register-entity 'foreign-method
-                               :id (%resect:type-method-id method)
-                               :source (%resect:type-method-source method)
+                               :id (%resect:type-method-id type-method)
+                               :source (%resect:type-method-source type-method)
                                :name (cond
                                        (constructor-p
-                                        (foreign-entity-name entity))
+                                        (string+ pure-method-name
+                                                 (extract-template-argument-string
+                                                  (%resect:type-name record-type))))
 
                                        ((cast-operator-p pure-method-name
                                                          result-type)
                                         (string+ "operator "
                                                  (foreign-entity-name result-type)))
 
-                                       (t (%resect:type-method-name method)))
+                                       (t (%resect:type-method-name type-method)))
                                :owner entity
                                :namespace (claw.spec:foreign-entity-namespace
                                            entity)
@@ -93,7 +95,7 @@
                                :result-type result-type
                                :parameters (parse-instantiated-method-parameters (%resect:function-proto-parameters method-type))
                                :variadic (%resect:function-proto-variadic-p method-type)
-                               :static (%resect:type-method-static-p method)
+                               :static (%resect:type-method-static-p type-method)
                                :const (%resect:type-const-qualified-p method-type)
                                :template nil)
             (when newp

@@ -78,7 +78,7 @@
              (when-let ((owner (claw.spec:foreign-owner entity)))
                (if (parameterizedp owner)
                    t
-                   owner))))
+                   (owner-parameterized-p owner)))))
     (let ((name (claw.spec:foreign-entity-name function)))
       (or (parameterizedp function)
           (parameterizedp (claw.spec:foreign-function-result-type function))

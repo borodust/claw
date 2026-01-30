@@ -1064,7 +1064,8 @@
 (defmethod parse-declaration ((kind (eql :variable)) declaration &key)
   (let ((type (parse-type-by-category (%resect:variable-type declaration)))
         (name (%resect:declaration-name declaration))
-        (location (make-declaration-location declaration)))
+        (location (make-declaration-location declaration))
+        (source (%resect:declaration-source declaration)))
     (unless (or (starts-with-subseq +instantiation-prefix+ name)
                 (eq :static (%resect:variable-storage-class declaration)))
       (let ((value (case (%resect:variable-kind declaration)
@@ -1072,14 +1073,16 @@
                      (:float (%resect:variable-to-float declaration))
                      (:string (%resect:variable-to-string declaration))
                      (t nil))))
-        (if (and (%resect:type-const-qualified-p (%resect:variable-type declaration))
+        (if (and (or (%resect:type-const-qualified-p
+                      (%resect:variable-type declaration))
+                     (starts-with-subseq "const " source))
                  (not (eq :external (%resect:declaration-linkage declaration))))
             (register-entity 'foreign-constant
                              :id name
                              :name name
                              :namespace (unless-empty
                                          (%resect:declaration-namespace declaration))
-                             :source (%resect:declaration-source declaration)
+                             :source source
                              :value value
                              :location location)
             (register-entity 'foreign-variable
@@ -1088,7 +1091,7 @@
                              :namespace (unless-empty
                                          (%resect:declaration-namespace declaration))
                              :location location
-                             :source (%resect:declaration-source declaration)
+                             :source source
                              :value value
                              :type type
                              :external (eq :external (%resect:declaration-linkage declaration))))))))

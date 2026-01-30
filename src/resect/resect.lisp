@@ -12,6 +12,8 @@
 (define-constant +va-list-id+ "va_list"
   :test #'string=)
 
+(defparameter *const-qualified-source-scanner* (ppcre:create-scanner "\\W*const\\W+"))
+
 (defgeneric parse-declaration (kind declaration &key &allow-other-keys))
 
 
@@ -1058,6 +1060,9 @@
                    :enveloped (parse-type-by-category pointee-type)
                    :rvalue (not (%resect:reference-lvalue-p type)))))
 
+
+(defun const-qualified-source-p (source)
+  (ppcre:all-matches *const-qualified-source-scanner* source))
 ;;;
 ;;; VARIABLE
 ;;;
@@ -1073,10 +1078,9 @@
                      (:float (%resect:variable-to-float declaration))
                      (:string (%resect:variable-to-string declaration))
                      (t nil))))
-        (if (and (or (%resect:type-const-qualified-p
-                      (%resect:variable-type declaration))
-                     (starts-with-subseq "const " source))
-                 (not (eq :external (%resect:declaration-linkage declaration))))
+        (if (or (%resect:type-const-qualified-p
+                 (%resect:variable-type declaration))
+                (const-qualified-source-p source))
             (register-entity 'foreign-constant
                              :id name
                              :name name

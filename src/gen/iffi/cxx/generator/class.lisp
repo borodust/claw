@@ -47,7 +47,11 @@
     (multiple-value-bind (field-type adapted-p)
         (adapt-type original-type)
       (unless (or (typep unaliased 'claw.spec:foreign-array)
-                  (typep unaliased 'claw.spec:foreign-const-qualifier))
+                  (typep (if (or (typep unaliased 'claw.spec:foreign-pointer)
+                                 (typep unaliased 'claw.spec:foreign-reference))
+                             (claw.spec:foreign-enveloped-entity unaliased)
+                             unaliased)
+                         'claw.spec:foreign-const-qualifier))
         (make-instance 'adapted-function
                        :name (format nil "set_~A_~A"
                                      (mangle-entity-name record)

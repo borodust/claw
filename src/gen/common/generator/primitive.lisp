@@ -5,7 +5,7 @@
                                          "int128"
                                          "uint128"
                                          "float128"
-                                         "nullptr"
+                                         "std::nullptr_t"
                                          "__f16"
                                          "half")
   :test 'equal)

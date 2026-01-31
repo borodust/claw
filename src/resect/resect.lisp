@@ -370,7 +370,7 @@
       (:float (register-primitive-type "float"))
       (:double (register-primitive-type "double"))
       (:long-double (register-primitive-type "long double"))
-      (:nullptr (register-primitive-type "nullptr"))
+      (:nullptr (register-primitive-type "std::nullptr_t"))
       (:float128 (register-primitive-type "float128"))
       (:half (register-primitive-type "half"))
       (:float16 (register-primitive-type "float16"))

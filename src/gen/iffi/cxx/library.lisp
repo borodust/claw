@@ -12,12 +12,10 @@
   (loop for entity in entities
         when (typep entity 'claw.spec:foreign-method)
           do (let* ((owner (claw.spec:foreign-owner entity))
-                    (owner-id (claw.spec:foreign-entity-id owner))
-                    (owner-name (claw.spec:foreign-entity-name owner))
-                    (entity-name (claw.spec:foreign-entity-name entity)))
-               (when (starts-with #\~ entity-name)
+                    (owner-id (claw.spec:foreign-entity-id owner)))
+               (when (claw.spec:foreign-destructor-p entity)
                  (setf (gethash (cons owner-id :dtor) *construction-table*) entity))
-               (when (string= owner-name entity-name)
+               (when (claw.spec:foreign-constructor-p entity)
                  (setf (gethash (cons owner-id :ctor) *construction-table*) entity)))))
 
 

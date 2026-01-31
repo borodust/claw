@@ -520,7 +520,7 @@
 ;;;
 ;;; POINTER
 ;;;
-(defclass foreign-pointer (foreign-entity envelope) ())
+(defclass foreign-pointer (ownable foreign-entity envelope) ())
 
 
 (defmethod rewrap-foreign-envelope ((entity foreign-pointer) value)
@@ -651,11 +651,17 @@
 
 
 (defmethod format-foreign-entity-c-name ((this foreign-pointer) &key const-qualified name)
-  (let ((enveloped (foreign-enveloped-entity this)))
+  (let ((enveloped (foreign-enveloped-entity this))
+        (owner-name (when-let ((owner (foreign-owner this)))
+                      (let ((*tag-types* nil))
+                        (format-foreign-entity-c-name owner)))))
     (if (typep enveloped 'foreign-function-prototype)
-        (format-foreign-entity-c-name enveloped :name (format nil "*~@[~A~]" name))
-        (format nil "~A*~@[ ~A~]~@[ ~A~]"
+        (format-foreign-entity-c-name enveloped :name (format nil "~@[~A::~]*~@[~A~]"
+                                                              owner-name
+                                                              name))
+        (format nil "~A~@[~A::~]*~@[ ~A~]~@[ ~A~]"
                 (format-foreign-entity-c-name enveloped)
+                owner-name
                 (when const-qualified "const")
                 name))))
 

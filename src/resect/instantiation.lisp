@@ -20,94 +20,9 @@
           (parse-instantiation-by-kind specialization-type))))))
 
 
-(defun ensure-method-mangled-name (method)
-  (let ((mangled (unless-empty (%resect:type-method-mangled-name method))))
-    (or mangled (mangle-id (%resect:type-method-id method)))))
-
-
-(defun parse-instantiated-method-parameters (parameters)
-  (let (params)
-    (resect:docollection (param-type parameters)
-      (push (make-instance 'foreign-parameter
-                           :name nil
-                           :mangled nil
-                           :location (make-instance 'foreign-location
-                                                    :path ""
-                                                    :line 0
-                                                    :column 0)
-                           :enveloped (ensure-const-type-if-needed
-                                       param-type
-                                       (parse-type-by-category param-type)))
-
-            params))
-    (nreverse params)))
-
-
-(defun cast-operator-p (pure-method-name result-type)
-  (and (foreign-named-p result-type)
-       (starts-with-subseq "operator " pure-method-name)
-       (string= pure-method-name
-                (string+ "operator "
-                         (remove-template-argument-string (foreign-entity-name result-type))))))
-
-
 (defun parse-instantiated-record-type (record-type)
-  (let* ((record-decl (%resect:type-declaration record-type))
-         (entity (parse-new-record-declaration (%resect:declaration-kind record-decl) record-decl)))
-    (let ((*current-owner* entity))
-      (resect:docollection (type-method (%resect:type-methods record-type))
-        (let* ((method-type (%resect:type-method-type type-method))
-               (mangled-name (ensure-method-mangled-name type-method))
-               (pure-method-name (remove-template-argument-string
-                                  (%resect:type-method-name type-method)))
-               (pure-record-name (remove-template-argument-string
-                                  (foreign-entity-name entity)))
-               (constructor-p (string= pure-method-name pure-record-name))
-               (result-type (ensure-const-type-if-needed
-                             (%resect:function-proto-result-type method-type)
-                             (parse-type-by-category
-                              (%resect:function-proto-result-type method-type)))))
-          (multiple-value-bind (method newp)
-              (register-entity 'foreign-method
-                               :id (%resect:type-method-id type-method)
-                               :kind (cond
-                                       (constructor-p
-                                        :constructor)
-                                       ((starts-with #\~ pure-method-name)
-                                        :destructor)
-                                       ((starts-with-subseq "operator" pure-method-name)
-                                        :operator)
-                                       (t :regular))
-                               :source (%resect:type-method-source type-method)
-                               :name (cond
-                                       (constructor-p
-                                        (string+ pure-method-name
-                                                 (extract-template-argument-string
-                                                  (%resect:type-name record-type))))
-
-                                       ((cast-operator-p pure-method-name
-                                                         result-type)
-                                        (string+ "operator "
-                                                 (foreign-entity-name result-type)))
-
-                                       (t (%resect:type-method-name type-method)))
-                               :owner entity
-                               :namespace (claw.spec:foreign-entity-namespace
-                                           entity)
-                               :mangled mangled-name
-                               :location (make-instance 'foreign-location
-                                                        :path ""
-                                                        :line 0
-                                                        :column 0)
-
-                               :result-type result-type
-                               :parameters (parse-instantiated-method-parameters (%resect:function-proto-parameters method-type))
-                               :variadic (%resect:function-proto-variadic-p method-type)
-                               :static (%resect:type-method-static-p type-method)
-                               :const (%resect:type-const-qualified-p method-type)
-                               :template nil)
-            (when newp
-              (setf (gethash mangled-name *mangled-table*) method))))))))
+  (let ((record-decl (%resect:type-declaration record-type)))
+    (parse-new-record-declaration (%resect:declaration-kind record-decl) record-decl :type record-type)))
 
 
 (defmethod parse-instantiation ((kind (eql :record)) type)

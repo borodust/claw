@@ -72,20 +72,9 @@
                              include-definitions
                              exclude-sources
                              exclude-definitions)
-        (let* ((includes (mapcar #'map-path
-                                 (append
-                                  (list nil)
-                                  includes)))
-               (system-includes (mapcar #'map-path
-                                        (append
-                                         (list nil)
-                                         system-includes
-                                         (list-all-known-include-paths))))
-               (framework-includes (mapcar #'map-path
-                                           (append
-                                            (list nil)
-                                            framework-includes
-                                            (list-all-known-framework-paths)))))
+        (let* ((includes (mapcar #'map-path includes))
+               (system-includes (mapcar #'map-path system-includes))
+               (framework-includes (mapcar #'map-path framework-includes)))
           (make-parse-options :language language
                               :standard standard
                               :headers headers
@@ -169,9 +158,9 @@
 
 
 (defun eval-targets (targets)
-  (loop for (features target . parse-opts) in targets
+  (loop for (features triple . parse-opts) in targets
         collect (make-target-options :features features
-                                     :triple target
+                                     :triple triple
                                      :parse (parse-parse-options parse-opts))))
 
 
@@ -241,58 +230,70 @@
 
 
 (defun combine-parse-options (wrapper-opts target-opts)
-  (let ((common-parse-opts (wrapper-options-parse wrapper-opts))
-        (target-parse-opts (target-options-parse target-opts)))
-    (if (not target-parse-opts)
-        common-parse-opts
-        (make-parse-options :language
-                            (or
-                             (parse-options-language target-parse-opts)
-                             (parse-options-language common-parse-opts))
-                            :standard
-                            (or
-                             (parse-options-standard target-parse-opts)
-                             (parse-options-standard common-parse-opts))
-                            :headers
-                            (append
-                             (parse-options-headers common-parse-opts)
-                             (parse-options-headers target-parse-opts))
-                            :includes
-                            (append
-                             (parse-options-includes common-parse-opts)
-                             (parse-options-includes target-parse-opts))
-                            :framework-includes
-                            (append
-                             (parse-options-framework-includes common-parse-opts)
-                             (parse-options-framework-includes target-parse-opts))
-                            :system-includes
-                            (append
-                             (parse-options-system-includes common-parse-opts)
-                             (parse-options-system-includes target-parse-opts))
-                            :defines
-                            (append
-                             (parse-options-defines common-parse-opts)
-                             (parse-options-defines target-parse-opts))
-                            :intrinsics
-                            (or
-                             (parse-options-intrinsics target-parse-opts)
-                             (parse-options-intrinsics common-parse-opts))
-                            :include-sources
-                            (append
-                             (parse-options-include-sources common-parse-opts)
-                             (parse-options-include-sources target-parse-opts))
-                            :include-definitions
-                            (append
-                             (parse-options-include-definitions common-parse-opts)
-                             (parse-options-include-definitions target-parse-opts))
-                            :exclude-sources
-                            (append
-                             (parse-options-exclude-sources common-parse-opts)
-                             (parse-options-exclude-sources target-parse-opts))
-                            :exclude-definitions
-                            (append
-                             (parse-options-exclude-definitions common-parse-opts)
-                             (parse-options-exclude-definitions target-parse-opts))))))
+  (macrolet ((%parse-opt (opt-name opts)
+               (let ((opt-name (second opt-name)))
+                 (once-only (opts)
+                   `(when ,opts
+                      (,(format-symbol *package*
+                                       "~A~A" 'parse-options- opt-name)
+                       ,opts))))))
+    (let* ((common-parse-opts (wrapper-options-parse wrapper-opts))
+           (target-parse-opts (target-options-parse target-opts))
+           (language (or
+                      (%parse-opt 'language target-parse-opts)
+                      (%parse-opt 'language common-parse-opts)))
+           (standard (or
+                      (%parse-opt 'standard target-parse-opts)
+                      (%parse-opt 'standard common-parse-opts)))
+           (features (target-options-features target-opts))
+           (triple (target-options-triple target-opts)))
+      (make-parse-options :include-sources
+                          (append
+                           (%parse-opt 'include-sources common-parse-opts)
+                           (%parse-opt 'include-sources target-parse-opts))
+                          :include-definitions
+                          (append
+                           (%parse-opt 'include-definitions common-parse-opts)
+                           (%parse-opt 'include-definitions target-parse-opts))
+                          :exclude-sources
+                          (append
+                           (%parse-opt 'exclude-sources common-parse-opts)
+                           (%parse-opt 'exclude-sources target-parse-opts))
+                          :exclude-definitions
+                          (append
+                           (%parse-opt 'exclude-definitions common-parse-opts)
+                           (%parse-opt 'exclude-definitions target-parse-opts))
+
+                          :language language
+                          :standard standard
+
+                          :headers
+                          (append
+                           (%parse-opt 'headers common-parse-opts)
+                           (%parse-opt 'headers target-parse-opts))
+                          :includes
+                          (append (list (map-path nil))
+                                  (%parse-opt 'includes target-parse-opts)
+                                  (%parse-opt 'includes common-parse-opts))
+                          :system-includes
+                          (or (append
+                               (%parse-opt 'system-includes target-parse-opts)
+                               (%parse-opt 'system-includes common-parse-opts)
+                               )
+                              (list-system-include-paths language triple features))
+                          :framework-includes
+                          (or (append
+                               (%parse-opt 'framework-includes target-parse-opts)
+                               (%parse-opt 'framework-includes common-parse-opts))
+                              (list-framework-paths language triple features))
+                          :defines
+                          (append
+                           (%parse-opt 'defines common-parse-opts)
+                           (%parse-opt 'defines target-parse-opts))
+                          :intrinsics
+                          (or
+                           (%parse-opt 'intrinsics target-parse-opts)
+                           (%parse-opt 'intrinsics common-parse-opts))))))
 
 
 (defun make-bindings-table (name opts configuration)

@@ -8,8 +8,9 @@
            #:with-evaluated-variables
            #:with-evaluated-lists
            #:find-path
-           #:list-all-known-include-paths
-           #:list-all-known-framework-paths
+           #:list-all-known-paths
+           #:list-system-include-paths
+           #:list-framework-paths
            #:default-c-name-to-lisp
 
            #:get-timestamp
@@ -259,10 +260,12 @@
        t))
 
 
-(defun dump-include-paths (lang &optional (executable "gcc"))
+(defun dump-include-paths (lang &optional (executable "gcc") triple)
   (handler-case
-      (let* ((command (format nil "echo | ~A -x~A ~@[~A~] -E -v -"
+      (let* ((command (format nil "echo | ~A -x~A ~@[--target=~A~] ~@[~A~] -E -v -"
                               executable lang
+                              (when (starts-with-subseq "clang" executable)
+                                triple)
                               (when (and (string= lang "c++")
                                          (starts-with-subseq "clang" executable))
                                 "-stdlib=libc++")))
@@ -314,16 +317,51 @@
           (setf (uiop:getenv "LC_ALL") lc-all))))))
 
 
-(defun list-all-known-include-paths ()
-  (remove-if #'%darwin-framework-path-p (list-all-known-paths)))
+(defun list-system-paths (language triple features)
+  (flet ((%process-paths (paths)
+           (mapcar (lambda (path)
+                     (uiop:native-namestring (uiop:truename* path)))
+                   paths))
+         (windows-target-p ()
+           (uiop:featurep features
+                          '(:windows :win :win64
+                            :x86-64 :x86 :x64
+                            :arm :arm64
+                            :ppc :ppc64
+                            :big-endian :little-endian))))
+    (let ((lc-all (uiop:getenv "LC_ALL")))
+      (setf (uiop:getenv "LC_ALL") "C")
+      (multiple-value-bind (lang clang-name gcc-name)
+          (case language
+            (:c++ (values "c++" "clang++" "g++"))
+            (:c (values "c" "clang" "gcc")))
+        (unwind-protect
+             (%process-paths
+              (cond
+                ((dump-gcc-version clang-name)
+                 (dump-include-paths lang clang-name triple))
+
+                ((windows-target-p)
+                 (if (dump-gcc-version (string+ "x86_64-w64-mingw32-" gcc-name))
+                     (dump-include-paths lang (string+ "x86_64-w64-mingw32-" gcc-name))
+                     (dump-include-paths lang gcc-name)))
+
+                (t (dump-include-paths lang gcc-name))))
+          (when lc-all
+            (setf (uiop:getenv "LC_ALL") lc-all)))))))
 
 
-(defun list-all-known-framework-paths ()
+(defun list-system-include-paths (language triple features)
+  (remove-if #'%darwin-framework-path-p
+             (list-system-paths language triple features)))
+
+
+(defun list-framework-paths (language triple features)
   (flet ((cut-darwin-postfix (path)
            (subseq path 0 (- (length path) (length +stupid-darwin-framework-postfix+)))))
     (mapcar #'cut-darwin-postfix
-            (remove-if (complement #'%darwin-framework-path-p) (list-all-known-paths)))))
-
+            (remove-if (complement #'%darwin-framework-path-p)
+                       (list-system-paths language triple features)))))
 
 (defun dump-gcc-version (&optional (executable "gcc"))
   (handler-case

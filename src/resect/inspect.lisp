@@ -40,11 +40,12 @@
                                    :target (%stringify target)
                                    :diagnostics diagnostics
                                    :intrinsics intrinsics
-                                   :include-definitions include-definitions
+                                   :include-definitions (list*
+                                                         +instantiation-prefix+
+                                                         include-definitions)
                                    :include-sources include-sources
                                    :exclude-definitions exclude-definitions
                                    :exclude-sources exclude-sources
-                                   :enforce-definitions (list +instantiation-prefix+)
                                    :defines defines)
       (let ((*translation-unit* unit))
         (call-next-method)))))

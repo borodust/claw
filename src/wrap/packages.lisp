@@ -13,7 +13,6 @@
            #:wrapper-always-generate
 
            #:wrapper-options-standard
-
            #:wrapper-options-headers
            #:wrapper-options-includes
            #:wrapper-options-defines

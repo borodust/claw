@@ -110,7 +110,11 @@
                                 &key include-definitions
                                   include-sources
                                   exclude-definitions
-                                  exclude-sources)
+                                  exclude-sources
+                                  enforce-definitions
+                                  enforce-sources
+                                  ignore-definitions
+                                  ignore-sources)
   (let ((prepared-path (merge-pathnames "prepared_implicit.h" prepared-dir))
         (implicit (make-instance 'implicit-preparing-inspector
                                  :instantiation-filter instantiation-filter)))
@@ -125,7 +129,11 @@
                              :include-definitions include-definitions
                              :include-sources include-sources
                              :exclude-definitions exclude-definitions
-                             :exclude-sources exclude-sources)
+                             :exclude-sources exclude-sources
+                             :enforce-definitions enforce-definitions
+                             :enforce-sources enforce-sources
+                             :ignore-definitions ignore-definitions
+                             :ignore-sources ignore-sources)
     (prepare-header implicit uber-path prepared-path)
     (values (list prepared-path)
             (loop for macro being the hash-value of (macros-of implicit)

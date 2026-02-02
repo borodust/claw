@@ -29,6 +29,10 @@
                                         include-sources
                                         exclude-definitions
                                         exclude-sources
+                                        enforce-definitions
+                                        enforce-sources
+                                        ignore-definitions
+                                        ignore-sources
                                       &allow-other-keys))
 
 (defgeneric foreign-library-entities (library))

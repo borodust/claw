@@ -147,7 +147,11 @@
                                                             include-definitions
                                                             include-sources
                                                             exclude-definitions
-                                                            exclude-sources)
+                                                            exclude-sources
+                                                            enforce-definitions
+                                                            enforce-sources
+                                                            ignore-definitions
+                                                            ignore-sources)
   (declare (ignore parser))
   (with-temporary-directory (:pathname prepared-dir)
     (uiop:with-temporary-file (:pathname uber-path :type "h")
@@ -165,7 +169,11 @@
                                    :include-definitions include-definitions
                                    :include-sources include-sources
                                    :exclude-definitions exclude-definitions
-                                   :exclude-sources exclude-sources)
+                                   :exclude-sources exclude-sources
+                                   :enforce-definitions enforce-definitions
+                                   :enforce-sources enforce-sources
+                                   :ignore-definitions ignore-definitions
+                                   :ignore-sources ignore-sources)
         (let ((*declaration-table* (make-hash-table :test 'equal))
               (*instantiated-table* (make-hash-table :test 'equal))
               (*mangled-table* (make-hash-table :test 'equal))
@@ -182,7 +190,11 @@
                                             :include-definitions include-definitions
                                             :include-sources include-sources
                                             :exclude-definitions exclude-definitions
-                                            :exclude-sources exclude-sources))
+                                            :exclude-sources exclude-sources
+                                            :enforce-definitions enforce-definitions
+                                            :enforce-sources enforce-sources
+                                            :ignore-definitions ignore-definitions
+                                            :ignore-sources ignore-sources))
           (loop for constant in (prepare-macros-as-constants uber-path
                                                              includes
                                                              frameworks

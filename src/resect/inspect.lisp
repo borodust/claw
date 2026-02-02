@@ -25,7 +25,11 @@
                                               include-definitions
                                               include-sources
                                               exclude-definitions
-                                              exclude-sources)
+                                              exclude-sources
+                                              enforce-definitions
+                                              enforce-sources
+                                              ignore-definitions
+                                              ignore-sources)
   (declare (ignore inspector))
   (flet ((%stringify (value)
            (when value
@@ -35,6 +39,7 @@
     (resect:with-translation-unit (unit (uiop:native-namestring header-path)
                                    :include-paths includes
                                    :framework-paths frameworks
+                                   :resource-paths (list-default-resource-paths)
                                    :language (%stringify language)
                                    :standard (%stringify standard)
                                    :target (%stringify target)
@@ -46,6 +51,10 @@
                                    :include-sources include-sources
                                    :exclude-definitions exclude-definitions
                                    :exclude-sources exclude-sources
+                                   :enforce-definitions enforce-definitions
+                                   :enforce-sources enforce-sources
+                                   :ignore-definitions ignore-definitions
+                                   :ignore-sources ignore-sources
                                    :defines defines)
       (let ((*translation-unit* unit))
         (call-next-method)))))

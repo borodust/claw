@@ -11,6 +11,7 @@
            #:list-all-known-paths
            #:list-system-include-paths
            #:list-framework-paths
+           #:list-default-resource-paths
            #:default-c-name-to-lisp
 
            #:get-timestamp
@@ -338,11 +339,11 @@
         (unwind-protect
              (%process-paths
               (cond
-                ((dump-gcc-version clang-name)
+                ((not (emptyp (dump-gcc-version clang-name)))
                  (dump-include-paths lang clang-name triple))
 
                 ((windows-target-p)
-                 (if (dump-gcc-version (string+ "x86_64-w64-mingw32-" gcc-name))
+                 (if (not (emptyp (dump-gcc-version (string+ "x86_64-w64-mingw32-" gcc-name))))
                      (dump-include-paths lang (string+ "x86_64-w64-mingw32-" gcc-name))
                      (dump-include-paths lang gcc-name)))
 
@@ -354,6 +355,12 @@
 (defun list-system-include-paths (language triple features)
   (remove-if #'%darwin-framework-path-p
              (list-system-paths language triple features)))
+
+
+(defun list-default-resource-paths ()
+  (let ((resource-path (dump-clang-default-resource-path)))
+    (unless (emptyp resource-path)
+      (list resource-path))))
 
 
 (defun list-framework-paths (language triple features)
@@ -368,6 +375,14 @@
       (trim-terminal-output
        (with-output-to-string (out)
          (uiop:run-program (format nil "~A -dumpversion" executable) :output out)))
+    (t () "")))
+
+
+(defun dump-clang-default-resource-path ()
+  (handler-case
+      (trim-terminal-output
+       (with-output-to-string (out)
+         (uiop:run-program "clang -print-resource-dir" :output out)))
     (t () "")))
 
 ;;;

@@ -32,6 +32,10 @@
   include-definitions
   exclude-sources
   exclude-definitions
+  enforce-sources
+  enforce-definitions
+  ignore-sources
+  ignore-definitions
 
   headers
   includes
@@ -50,6 +54,10 @@
                          include-definitions
                          exclude-sources
                          exclude-definitions
+                         enforce-sources
+                         enforce-definitions
+                         ignore-sources
+                         ignore-definitions
 
                          headers
                          includes
@@ -71,7 +79,11 @@
                              include-sources
                              include-definitions
                              exclude-sources
-                             exclude-definitions)
+                             exclude-definitions
+                             enforce-sources
+                             enforce-definitions
+                             ignore-sources
+                             ignore-definitions)
         (let* ((includes (mapcar #'map-path includes))
                (system-includes (mapcar #'map-path system-includes))
                (framework-includes (mapcar #'map-path framework-includes)))
@@ -86,7 +98,11 @@
                               :include-sources include-sources
                               :include-definitions include-definitions
                               :exclude-sources exclude-sources
-                              :exclude-definitions exclude-definitions))))))
+                              :exclude-definitions exclude-definitions
+                              :enforce-sources enforce-sources
+                              :enforce-definitions enforce-definitions
+                              :ignore-sources ignore-sources
+                              :ignore-definitions ignore-definitions))))))
 
 
 (defstruct target-options
@@ -263,6 +279,22 @@
                           (append
                            (%parse-opt 'exclude-definitions common-parse-opts)
                            (%parse-opt 'exclude-definitions target-parse-opts))
+                          :enforce-sources
+                          (append
+                           (%parse-opt 'enforce-sources common-parse-opts)
+                           (%parse-opt 'enforce-sources target-parse-opts))
+                          :enforce-definitions
+                          (append
+                           (%parse-opt 'enforce-definitions common-parse-opts)
+                           (%parse-opt 'enforce-definitions target-parse-opts))
+                          :ignore-sources
+                          (append
+                           (%parse-opt 'ignore-sources common-parse-opts)
+                           (%parse-opt 'ignore-sources target-parse-opts))
+                          :ignore-definitions
+                          (append
+                           (%parse-opt 'ignore-definitions common-parse-opts)
+                           (%parse-opt 'ignore-definitions target-parse-opts))
 
                           :language language
                           :standard standard
@@ -278,8 +310,7 @@
                           :system-includes
                           (or (append
                                (%parse-opt 'system-includes target-parse-opts)
-                               (%parse-opt 'system-includes common-parse-opts)
-                               )
+                               (%parse-opt 'system-includes common-parse-opts))
                               (list-system-include-paths language triple features))
                           :framework-includes
                           (or (append
@@ -306,7 +337,9 @@
                        (parse-options-headers parse-opts)
                        :language (parse-options-language parse-opts)
                        :standard (parse-options-standard parse-opts)
-                       :includes (parse-options-includes parse-opts)
+                       :includes (append
+                                  (parse-options-includes parse-opts)
+                                  (parse-options-system-includes parse-opts))
                        :framework-includes (parse-options-framework-includes parse-opts)
                        :target triple
                        :defines (parse-options-defines parse-opts)
@@ -315,7 +348,11 @@
                        :include-sources (parse-options-include-sources parse-opts)
                        :include-definitions (parse-options-include-definitions parse-opts)
                        :exclude-sources (parse-options-exclude-sources parse-opts)
-                       :exclude-definitions (parse-options-exclude-definitions parse-opts))
+                       :exclude-definitions (parse-options-exclude-definitions parse-opts)
+                       :enforce-sources (parse-options-enforce-sources parse-opts)
+                       :enforce-definitions (parse-options-enforce-definitions parse-opts)
+                       :ignore-sources (parse-options-ignore-sources parse-opts)
+                       :ignore-definitions (parse-options-ignore-definitions parse-opts))
         for selected-language = (or (parse-options-language parse-opts)
                                     (foreign-library-language library)
                                     :c)

@@ -375,7 +375,8 @@
       (:half (register-primitive-type "half"))
       (:float16 (register-primitive-type "float16"))
       (:auto (register-primitive-type "auto"))
-      (:atomic (register-primitive-type "atomic")))))
+      (:atomic (register-primitive-type "atomic"))
+      (:complex (register-primitive-type "std::complex")))))
 
 
 (defmethod parse-type ((category (eql :arithmetic)) kind type)

@@ -655,7 +655,7 @@
         (record-type (or record-type (%resect:declaration-type record-decl))))
     (resect:docollection (type-method (%resect:type-methods record-type))
       (let* ((method-type (%resect:type-method-type type-method))
-             (method-decl (%resect:type-declaration method-type))
+             (method-decl (%resect:type-method-declaration type-method))
              (mangled-name (ensure-method-mangled-name type-method postfix))
              (pure-method-name (remove-template-argument-string
                                 (%resect:type-method-name type-method)))

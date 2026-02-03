@@ -52,6 +52,8 @@
                                              (16 :uint16)
                                              (32 :uint32)
                                              (64 :uint64))))))
+      ("char16_t" `((cffi:defctype ,(entity->cffi-type type) ,:uint16)))
+      ("char32_t" `((cffi:defctype ,(entity->cffi-type type) ,:uint32)))
       (t (cond
            ((emulated-primitive-p type)
             (generate-primitive-byte-holder type))

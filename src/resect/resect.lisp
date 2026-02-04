@@ -616,7 +616,7 @@
 
 
 (defun ensure-method-mangled-name (type-method postfix)
-  (let* ((method-type (%resect:type-method-type type-method))
+  (let* ((method-type (%resect:type-method-prototype type-method))
          (method-decl (%resect:type-declaration method-type)))
     (or (unless (cffi:null-pointer-p method-decl)
           (postfix-decorate (ensure-mangled method-decl) postfix))
@@ -654,7 +654,7 @@
   (let ((*current-owner* entity)
         (record-type (or record-type (%resect:declaration-type record-decl))))
     (resect:docollection (type-method (%resect:type-methods record-type))
-      (let* ((method-type (%resect:type-method-type type-method))
+      (let* ((method-prototype (%resect:type-method-prototype type-method))
              (method-decl (%resect:type-method-declaration type-method))
              (mangled-name (ensure-method-mangled-name type-method postfix))
              (pure-method-name (remove-template-argument-string
@@ -663,9 +663,9 @@
                                 (foreign-entity-name entity)))
              (constructor-p (string= pure-method-name pure-record-name))
              (result-type (ensure-const-type-if-needed
-                           (%resect:function-proto-result-type method-type)
+                           (%resect:function-proto-result-type method-prototype)
                            (parse-type-by-category
-                            (%resect:function-proto-result-type method-type)))))
+                            (%resect:function-proto-result-type method-prototype)))))
         (multiple-value-bind (method newp)
             (register-entity 'foreign-method
                              :id (%resect:type-method-id type-method)
@@ -704,13 +704,11 @@
                                                           :column 0)
                                            (make-declaration-location method-decl))
                              :result-type result-type
-                             :parameters (if (cffi:null-pointer-p method-decl)
-                                             (parse-instantiated-method-parameters
-                                              (%resect:function-proto-parameters method-type))
-                                             (parse-parameters (%resect:method-parameters method-decl)))
-                             :variadic (%resect:function-proto-variadic-p method-type)
+                             :parameters (parse-instantiated-method-parameters
+                                          (%resect:function-proto-parameters method-prototype))
+                             :variadic (%resect:function-proto-variadic-p method-prototype)
                              :static (%resect:type-method-static-p type-method)
-                             :const (%resect:type-const-qualified-p method-type)
+                             :const (%resect:type-const-qualified-p method-prototype)
                              :template (if (cffi:null-pointer-p method-decl)
                                            nil
                                            (%resect:declaration-template-p method-decl)))

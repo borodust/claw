@@ -624,21 +624,28 @@
         (mangle-id (%resect:type-method-id type-method)))))
 
 
-(defun parse-instantiated-method-parameters (parameters)
-  (let (params)
-    (resect:docollection (param-type parameters)
-      (push (make-instance 'foreign-parameter
-                           :name nil
-                           :mangled nil
-                           :location (make-instance 'foreign-location
-                                                    :path ""
-                                                    :line 0
-                                                    :column 0)
-                           :enveloped (ensure-const-type-if-needed
-                                       param-type
-                                       (parse-type-by-category param-type)))
+(defun parse-instantiated-method-parameters (parameters parameter-decls)
+  (let (params param-names)
+    (unless (cffi:null-pointer-p parameter-decls)
+      (resect:docollection (param-decl parameter-decls)
+        (push (%resect:declaration-name param-decl) param-names))
+      (setf param-names (nreverse param-names)))
 
-            params))
+    (resect:docollection (param-type parameters)
+      (let ((param-name (first param-names)))
+        (setf param-names (rest param-names))
+        (push (make-instance 'foreign-parameter
+                             :name param-name
+                             :mangled nil
+                             :location (make-instance 'foreign-location
+                                                      :path ""
+                                                      :line 0
+                                                      :column 0)
+                             :enveloped (ensure-const-type-if-needed
+                                         param-type
+                                         (parse-type-by-category param-type)))
+
+              params)))
     (nreverse params)))
 
 
@@ -705,7 +712,9 @@
                                            (make-declaration-location method-decl))
                              :result-type result-type
                              :parameters (parse-instantiated-method-parameters
-                                          (%resect:function-proto-parameters method-prototype))
+                                          (%resect:function-proto-parameters method-prototype)
+                                          (unless (cffi:null-pointer-p method-decl)
+                                            (%resect:method-parameters method-decl)))
                              :variadic (%resect:function-proto-variadic-p method-prototype)
                              :static (%resect:type-method-static-p type-method)
                              :const (%resect:type-method-const-p type-method)

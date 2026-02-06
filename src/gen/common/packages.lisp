@@ -40,6 +40,7 @@
            #:export-symbol
            #:expand-constant
            #:entity->cffi-type
+           #:entity->iffi-type
            #:emulated-primitive-p
            #:anonymousp
            #:call-shielded-from-unknown

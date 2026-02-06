@@ -70,7 +70,10 @@
 (defmethod print-object ((o adapted-function) s)
   (with-slots (name params result-type body) o
     (print-unreadable-object (o s :type t :identity nil)
-      (let ((params (mapcar #'claw.spec:foreign-enveloped-entity params)))
+      (let ((params (mapcar (lambda (param)
+                              (claw.spec:foreign-enveloped-entity
+                               (car (ensure-cons param))))
+                            params)))
         (format s "~A ~A ~A ~S" name result-type params body)))))
 
 
@@ -97,7 +100,8 @@
                                        (claw.spec:foreign-reference-rvalue-p adapted))
                                   (format nil "std::move(*~A)" param-name))
                                  (adapted (format nil "*~A" param-name))
-                                 (t param-name))))
+                                 (t param-name))
+                        :from param))
           into adapted-params
         finally (return (values adapted-params any-adapted-p))))
 
@@ -199,7 +203,8 @@
                                             result-type-adapted-from
                                             body)))
                (params (mapcar (lambda (param)
-                                 (getf param :adapted))
+                                 (cons (getf param :adapted)
+                                       (getf param :from)))
                                adapted-params))
                (params (if (and (typep entity 'claw.spec:foreign-method)
                                 (not (claw.spec:foreign-method-static-p entity)))

@@ -133,7 +133,9 @@
 (defun format-function (function stream)
   (let* ((result-type (adapted-function-result-type function))
          (name (format-adapted-function-name (adapted-function-name function)))
-         (params (mapcar #'claw.spec:format-foreign-entity-c-name
+         (params (mapcar (lambda (param)
+                           (claw.spec:format-foreign-entity-c-name
+                            (car (ensure-cons param))))
                          (adapted-function-parameters function)))
          (body (adapted-function-body function))
          (namespaces (when-let ((namespace (adapted-function-namespace function)))

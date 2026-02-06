@@ -2,7 +2,8 @@
 
 
 (defun generate-cffi-parameters (params)
-  (loop for param in params
+  (loop for adapted-param in params
+        for (param . nil) = (ensure-cons adapted-param)
         for param-idx from 0
         for enveloped = (claw.spec:foreign-enveloped-entity param)
         for adapted = (entity->cffi-type enveloped)

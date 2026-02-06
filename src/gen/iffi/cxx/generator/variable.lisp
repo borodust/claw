@@ -67,14 +67,14 @@
                 (values (register-adapted-function adapted-setter)
                         (format-symbol (symbol-package name) "~A~A"
                                        'iffi-variable-setter$ name)))
-            (with-gensyms (value)
+            (let ((value-s (alexandria:symbolicate name '-value)))
               `((cffi:defcfun (,setter-cname ,setter-name) :void
                   ,(claw.spec:format-foreign-location
                     (claw.spec:foreign-entity-location entity))
                   (,name ,(entity->cffi-type (claw.spec:foreign-enveloped-entity
                                               (first (adapted-function-parameters adapted-setter))))))
                 (declaim (inline (setf ,accessor-name)))
-                (defun (setf ,accessor-name) (,value)
-                  (,setter-name ,value))))))
+                (defun (setf ,accessor-name) (,value-s)
+                  (,setter-name ,value-s))))))
       (define-symbol-macro ,decorated-name
           (,accessor-name)))))

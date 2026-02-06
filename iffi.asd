@@ -8,5 +8,9 @@
   :serial t
   :components ((:file "packages")
                (:file "utils")
-               (:file "function-index")
-               (:file "iffi")))
+               (:file "iffi")
+               (:file "function")
+               (:file "alias")
+               (:file "record")
+               (:file "alloc")
+               (:file "callback")))

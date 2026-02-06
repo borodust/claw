@@ -59,7 +59,7 @@
   :author "Pavel Korolev"
   :license "MIT"
   :version "1.0"
-  :depends-on (:uiop :alexandria :cffi :cl-ppcre
+  :depends-on (:uiop :alexandria :cffi :iffi :cl-ppcre
                :trivial-features :claw/util
                :claw/spec :float-features)
   :pathname "src/gen/common/"
@@ -88,7 +88,7 @@
   :author "Pavel Korolev"
   :license "MIT"
   :version "1.0"
-  :depends-on (:claw/wrapper :claw/generator/common)
+  :depends-on (:claw/wrapper :claw/generator/common :cffi)
   :pathname "src/gen/cffi/c/"
   :serial t
   :components ((:file "packages")
@@ -103,7 +103,7 @@
 
 
 (asdf:defsystem :claw/generator/iffi
-  :description "Intricate foreign function interface generator for CLAW"
+  :description "IFFI generator for CLAW"
   :author "Pavel Korolev"
   :license "MIT"
   :version "1.0"

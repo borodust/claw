@@ -24,6 +24,8 @@
 
 (defvar *qualify-records* t)
 
+(defvar *use-overriden-types* t)
+
 
 (define-constant +adapted-variable-prefix+ "__v_claw_"
   :test #'string=)
@@ -104,63 +106,113 @@
     (t (c-name->lisp name :type))))
 
 
+(defun entity->iffi-type (entity &key (qualify-records *qualify-records*) ((:const-qualified const-qualified-p) nil))
+  (let ((*qualify-records* qualify-records))
+    (labels ((%enveloped-entity ()
+               (claw.spec:unalias-foreign-entity (claw.spec:foreign-enveloped-entity entity)))
+             (%enveloped-char-p ()
+               (let ((unwrapped (claw.spec:unwrap-foreign-entity entity)))
+                 (and (typep unwrapped 'claw.spec:foreign-primitive)
+                      (string= "char" (claw.spec:foreign-entity-name unwrapped)))))
+             (%lisp-name ()
+               (name->cffi-type (let ((full-name (and (claw.spec:foreign-named-p entity)
+                                                      (claw.spec:format-full-foreign-entity-name entity))))
+                                  (if (emptyp full-name)
+                                      (claw.spec:foreign-entity-id entity)
+                                      full-name)))))
+      (typecase entity
+        (claw.spec:foreign-pointer (if (and *recognize-strings* (%enveloped-char-p))
+                                       :string
+                                       (list* :pointer
+                                              (entity->iffi-type (%enveloped-entity))
+                                              (when const-qualified-p
+                                                (list :const)))))
+        (claw.spec:foreign-reference `(:reference
+                                       ,(entity->iffi-type
+                                         (%enveloped-entity))
+                                       ,@(when const-qualified-p
+                                           (list :const))
+                                       ,@(when (claw.spec:foreign-reference-rvalue-p entity)
+                                           (list :rvalue))))
+        (claw.spec:foreign-array (let ((dimensions (claw.spec:foreign-array-dimensions entity)))
+                                   (cond
+                                     ((and (= (length dimensions) 1) (%enveloped-char-p))
+                                      :string)
+                                     ((and dimensions *recognize-arrays*)
+                                      (list* :array
+                                             (entity->iffi-type (%enveloped-entity))
+                                             (apply #'* dimensions)
+                                             (when const-qualified-p
+                                               (list :const))))
+                                     (t
+                                      (list* :pointer
+                                             (entity->iffi-type (%enveloped-entity))
+                                             (when const-qualified-p
+                                               (list :const)))))))
+        (claw.spec:foreign-struct (cond
+                                    (*qualify-records*
+                                     `(,:struct ,(%lisp-name) ,@(when const-qualified-p
+                                                                  (list :const))))
+                                    (const-qualified-p
+                                     (list (%lisp-name) :const))
+                                    (t (%lisp-name))))
+        (claw.spec:foreign-union (cond
+                                   (*qualify-records*
+                                    `(,:union ,(%lisp-name) ,@(when const-qualified-p
+                                                                (list :const))))
+                                   (const-qualified-p
+                                    (list (%lisp-name) :const))
+                                   (t (%lisp-name))))
+        (claw.spec:foreign-class (if const-qualified-p
+                                     (list (%lisp-name) :const)
+                                     (%lisp-name)))
+        (claw.spec:foreign-const-qualifier (entity->iffi-type
+                                            (%enveloped-entity)
+                                            :const-qualified t))
+        (claw.spec:foreign-function (%lisp-name))
+        (claw.spec:foreign-function-prototype :void)
+        (t (if const-qualified-p
+               (list (%lisp-name) :const)
+               (%lisp-name)))))))
 
-(defun entity->cffi-type (entity &key (qualify-records *qualify-records*) (use-overriden-types t))
-  (labels ((%type (type)
-             (if use-overriden-types
+
+(defun iffi->cffi-type (iffi-type &key ((:use-overriden-types use-overriden-types) *use-overriden-types*))
+  (let ((*use-overriden-types* use-overriden-types))
+    (flet ((%overtype (type)
+             (if *use-overriden-types*
                  (get-overriden-type type)
                  type))
-           (%enveloped-entity ()
-             (claw.spec:unqualify-foreign-entity (claw.spec:foreign-enveloped-entity entity)))
-           (%enveloped-char-p ()
-             (let ((unwrapped (claw.spec:unwrap-foreign-entity entity)))
-               (and (typep unwrapped 'claw.spec:foreign-primitive)
-                    (string= "char" (claw.spec:foreign-entity-name unwrapped)))))
-           (%lisp-name ()
-             (%type
-              (name->cffi-type (let ((full-name (and (claw.spec:foreign-named-p entity)
-                                                     (claw.spec:format-full-foreign-entity-name entity))))
-                                 (if (emptyp full-name)
-                                     (claw.spec:foreign-entity-id entity)
-                                     full-name))))))
-    (typecase entity
-      (claw.spec:foreign-pointer (if (and *recognize-strings* (%enveloped-char-p))
-                                     (%type :string)
-                                     (list (%type :pointer)
-                                           (entity->cffi-type (%enveloped-entity)
-                                                              :qualify-records qualify-records))))
-      (claw.spec:foreign-reference `(,(%type :pointer)
-                                     ,(entity->cffi-type
-                                       (%enveloped-entity)
-                                       :qualify-records qualify-records)))
-      (claw.spec:foreign-array (let ((dimensions (claw.spec:foreign-array-dimensions entity)))
-                                 (cond
-                                   ((and (= (length dimensions) 1) (%enveloped-char-p))
-                                    (%type :string))
-                                   ((and dimensions *recognize-arrays*)
-                                    (list (%type :array)
-                                          (entity->cffi-type
-                                           (%enveloped-entity)
-                                           :qualify-records qualify-records)
-                                          (apply #'* dimensions)))
-                                   (t
-                                    (list (%type :pointer)
-                                          (entity->cffi-type
-                                           (%enveloped-entity)
-                                           :qualify-records qualify-records))))))
-      (claw.spec:foreign-struct (if qualify-records
-                                    `(,(%type :struct) ,(%lisp-name))
-                                    (%lisp-name)))
-      (claw.spec:foreign-union (if qualify-records
-                                   `(,(%type :union) ,(%lisp-name))
-                                   (%lisp-name)))
-      (claw.spec:foreign-class (%lisp-name))
-      (claw.spec:foreign-const-qualifier (entity->cffi-type
-                                          (%enveloped-entity)
-                                          :qualify-records qualify-records))
-      (claw.spec:foreign-function (%lisp-name))
-      (claw.spec:foreign-function-prototype (%type :void))
-      (t (%lisp-name)))))
+           (%unqualify (iffi-type)
+             (remove-if (lambda (value) (member value '(:const :rvalue))) (ensure-list iffi-type))))
+      (destructuring-bind (kind &optional type &rest opts) (ensure-list iffi-type)
+        (case kind
+          (:string :string)
+          (:pointer (if type
+                        (list (%overtype :pointer)
+                              (iffi->cffi-type type))
+                        :pointer))
+          (:reference (if type
+                          (list (%overtype :pointer) (iffi->cffi-type type))
+                          :pointer))
+          (:array (destructuring-bind (&optional dimensions &rest other) opts
+                    (declare (ignore other))
+                    (list* (%overtype :array)
+                           (iffi->cffi-type type)
+                           (when dimensions
+                             (list dimensions)))))
+          (:struct (list (%overtype :struct) (iffi->cffi-type type)))
+          (:union (list (%overtype :union) (iffi->cffi-type type)))
+          (:void (%overtype :void))
+          (otherwise (let ((unqualified-type (%unqualify iffi-type)))
+                       (if (null (rest unqualified-type))
+                           (first unqualified-type)
+                           unqualified-type))))))))
+
+
+(defun entity->cffi-type (entity &key (qualify-records *qualify-records*) (use-overriden-types t))
+  (iffi->cffi-type
+   (entity->iffi-type entity :qualify-records qualify-records)
+   :use-overriden-types use-overriden-types))
 
 
 (defun void ()

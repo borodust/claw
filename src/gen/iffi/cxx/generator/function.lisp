@@ -30,11 +30,23 @@
 
 
 (defun generate-adapted-parameters (adapted-function)
-  (loop for param in (adapted-function-parameters adapted-function)
+  (loop for adapted-param in (adapted-function-parameters adapted-function)
+        for (param . from) = (ensure-cons adapted-param)
         for name = (c-name->lisp (claw.spec:foreign-entity-name param)
                                  :parameter)
-        for enveloped = (claw.spec:foreign-enveloped-entity param)
-        collect `(,name ,(entity->cffi-type enveloped))))
+        for cffi-type = (entity->cffi-type
+                         (claw.spec:foreign-enveloped-entity param))
+        for cffi-type-no-override = (entity->cffi-type
+                                     (claw.spec:foreign-enveloped-entity param)
+                                     :use-overriden-types nil)
+        for iffi-type = (when from
+                          (entity->iffi-type
+                           (claw.spec:foreign-enveloped-entity from)))
+        collect `(,name ,cffi-type
+                        ,@(unless (and (equal cffi-type cffi-type-no-override)
+                                       (or (null iffi-type)
+                                           (equal cffi-type iffi-type)))
+                            (list :signed-as (or iffi-type cffi-type-no-override))))))
 
 
 (defun generate-function-binding (entity)
@@ -65,7 +77,9 @@
                                     ,@(unless *inline-functions*
                                         `(:inline nil)))
           ,result-type
-        ,(claw.spec:format-foreign-location (claw.spec:foreign-entity-location entity))
+        ,(format nil "~A;~&~A"
+                 (claw.spec:foreign-entity-source entity)
+                 (claw.spec:format-foreign-location (claw.spec:foreign-entity-location entity)))
         ,@params
         ,@(when (claw.spec:foreign-function-variadic-p entity)
             (list 'cl:&rest))))))

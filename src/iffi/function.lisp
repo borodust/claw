@@ -120,6 +120,22 @@
   `(intricate-funcall ',name ,@arguments))
 
 
+(defun format-defifun-documentation (return-type param-config doc)
+  (if (null param-config)
+      doc
+      (with-output-to-string (out)
+        (let ((*print-case* :downcase))
+          (format out "Adapted result: ")
+          (prin1 return-type out)
+          (format out "~&Adapted parameters:")
+          (loop for (name type) in param-config
+                do (format out "~&")
+                   (prin1 type out)
+                   (format out " ")
+                   (princ name out))
+          (format out "~&~%~A" doc)))))
+
+
 (defmacro defifun (name-and-options return-type &body configuration)
   (destructuring-bind (mangled name &rest opts) (ensure-list name-and-options)
     (let (doc
@@ -185,5 +201,8 @@
            ,@(when (and doc
                         (not (member :iffi-skip-documentation *features*)))
                `((meta-eval
-                   (setf (intricate-documentation ',name ,@signed-param-types) ,doc))
+                   (setf (intricate-documentation ',name ,@signed-param-types)
+                         ,(format-defifun-documentation return-type
+                                                        param-config
+                                                        doc)))
                  (ensure-documentation ',name))))))))

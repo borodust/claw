@@ -79,7 +79,10 @@
           ,result-type
         ,(format nil "~A;~&~A"
                  (claw.spec:foreign-entity-source entity)
-                 (claw.spec:format-foreign-location (claw.spec:foreign-entity-location entity)))
+                 (let ((location (claw.spec:foreign-entity-location entity)))
+                   (if (uiop:emptyp (claw.spec:foreign-location-path location))
+                       "(No source location found)"
+                       (claw.spec:format-foreign-location location))))
         ,@params
         ,@(when (claw.spec:foreign-function-variadic-p entity)
             (list 'cl:&rest))))))

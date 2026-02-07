@@ -26,6 +26,8 @@
       `(,@(when *inline-functions*
             `((declaim (inline ,id))))
         (cffi:defcfun (,c-name ,id) ,(entity->cffi-type (adapted-function-result-type adapted))
+          ,(claw.spec:format-foreign-location
+            (claw.spec:foreign-entity-location entity))
           ,@(generate-cffi-parameters (adapted-function-parameters adapted))
           ,@(when (claw.spec:foreign-function-variadic-p entity)
               (list 'cl:&rest)))))))

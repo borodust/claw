@@ -186,7 +186,7 @@
              (remove-if (lambda (value) (member value '(:const :rvalue))) (ensure-list iffi-type))))
       (destructuring-bind (kind &optional type &rest opts) (ensure-list iffi-type)
         (case kind
-          (:string :string)
+          (:string (%overtype :string))
           (:pointer (if type
                         (list (%overtype :pointer)
                               (iffi->cffi-type type))
@@ -205,7 +205,7 @@
           (:void (%overtype :void))
           (otherwise (let ((unqualified-type (%unqualify iffi-type)))
                        (if (null (rest unqualified-type))
-                           (first unqualified-type)
+                           (%overtype (first unqualified-type))
                            unqualified-type))))))))
 
 

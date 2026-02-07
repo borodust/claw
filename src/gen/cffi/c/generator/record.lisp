@@ -47,7 +47,10 @@
          (name (or name (second id)))
          (byte-size (/ (claw.spec:foreign-entity-bit-size entity) 8)))
     (export-symbol name)
-    `((,kind (,name :size ,byte-size) ,@fields))))
+    `((,kind (,name :size ,byte-size)
+             ,(claw.spec:format-foreign-location
+               (claw.spec:foreign-entity-location entity))
+             ,@fields))))
 
 
 (defmethod foreign-entity-dependencies ((entity claw.spec:foreign-record))

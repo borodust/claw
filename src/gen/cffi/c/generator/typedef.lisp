@@ -6,7 +6,9 @@
          (aliased-type (entity->cffi-type (check-entity-known
                                            (claw.spec:foreign-enveloped-entity entity)))))
     (export-symbol id)
-    `((cffi:defctype ,id ,aliased-type))))
+    `((cffi:defctype ,id ,aliased-type
+        ,(claw.spec:format-foreign-location
+          (claw.spec:foreign-entity-location entity))))))
 
 
 (defmethod generate-binding ((generator cffi-generator) (entity claw.spec:foreign-alias) &key)

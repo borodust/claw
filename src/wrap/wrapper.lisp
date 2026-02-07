@@ -257,7 +257,8 @@
            (target-parse-opts (target-options-parse target-opts))
            (language (or
                       (%parse-opt 'language target-parse-opts)
-                      (%parse-opt 'language common-parse-opts)))
+                      (%parse-opt 'language common-parse-opts)
+                      :c))
            (standard (or
                       (%parse-opt 'standard target-parse-opts)
                       (%parse-opt 'standard common-parse-opts)))

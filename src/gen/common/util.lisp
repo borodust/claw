@@ -109,7 +109,7 @@
 (defun entity->iffi-type (entity &key (qualify-records *qualify-records*) ((:const-qualified const-qualified-p) nil))
   (let ((*qualify-records* qualify-records))
     (labels ((%enveloped-entity ()
-               (claw.spec:unalias-foreign-entity (claw.spec:foreign-enveloped-entity entity)))
+               (claw.spec:foreign-enveloped-entity entity))
              (%enveloped-char-p ()
                (let ((unwrapped (claw.spec:unwrap-foreign-entity entity)))
                  (and (typep unwrapped 'claw.spec:foreign-primitive)

@@ -1007,6 +1007,15 @@
                    :variadic (%resect:function-proto-variadic-p type))))
 
 
+(defmethod parse-type (category (kind (eql :function-no-prototype)) type)
+  (declare (ignorable category kind))
+  (make-instance 'foreign-function-prototype
+                 :result-type (parse-type-by-category
+                               (%resect:function-proto-result-type type))
+                 :parameters nil ;; noproto functions have no parameters
+                 :variadic nil))
+
+
 ;;;
 ;;; TYPEDEF
 ;;;

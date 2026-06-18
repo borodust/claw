@@ -3,7 +3,7 @@
 
 (defun adapt-variable-setter (variable)
   (multiple-value-bind (variable-type adapted-p)
-      (adapt-type (check-entity-known (claw.spec:foreing-variable-type variable)))
+      (adapt-type (check-entity-known (claw.spec:foreign-variable-type variable)))
     (let ((unaliased (claw.spec:unalias-foreign-entity variable-type)))
       (unless (or (typep unaliased 'claw.spec:foreign-array)
                   (typep unaliased 'claw.spec:foreign-const-qualifier))
@@ -21,7 +21,7 @@
 
 (defun adapt-variable-getter (variable)
   (multiple-value-bind (variable-type adapted-p)
-      (adapt-type (check-entity-known (claw.spec:foreing-variable-type variable)))
+      (adapt-type (check-entity-known (claw.spec:foreign-variable-type variable)))
     (let* ((unaliased (claw.spec:unalias-foreign-entity variable-type))
            (array-p (typep unaliased 'claw.spec:foreign-array))
            (result-type (if array-p

@@ -228,7 +228,7 @@
     (prepare-type (%resect:declaration-type param-decl))))
 
 
-(defmethod prepare-declaration ((kind (eql :functino-prototype)) declaration &key)
+(defmethod prepare-declaration ((kind (eql :function-prototype)) declaration &key)
   (prepare-declaration :function declaration))
 
 (defmethod prepare-declaration ((kind (eql :typedef)) declaration &key)

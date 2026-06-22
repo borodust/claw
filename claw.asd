@@ -132,3 +132,13 @@
   :pathname "src/"
   :serial t
   :components ((:file "packages")))
+
+
+(asdf:defsystem :claw/test
+  :description "Test suite for Claw"
+  :license "MIT"
+  :depends-on (:claw)
+  :pathname "test/"
+  :components ((:module "util"
+                :components ((:file "util")))))
+

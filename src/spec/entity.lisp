@@ -77,9 +77,10 @@
 
            #:foreign-method
            #:foreign-method-kind
+           #:foreign-method-constructor-kind
            #:foreign-method-static-p
            #:foreign-method-const-p
-           #:foreign-method-deleted-p
+           #:foreign-method-ref-qualifier
 
            #:foreign-variable
            #:foreing-variable-type
@@ -467,17 +468,44 @@
 
 (defclass foreign-method (foreign-function)
   ((kind :initarg :kind
-        :initform :regular
-        :reader foreign-method-kind)
+         :initform :regular
+         :reader foreign-method-kind)
+   (constructor-kind :initarg :constructor-kind
+                     :initform :invalid   ; i.e., not a constructor
+                     :reader foreign-method-constructor-kind)
    (static-p :initarg :static
              :initform nil
              :reader foreign-method-static-p)
    (const-p :initarg :const
              :initform nil
             :reader foreign-method-const-p)
-   (deleted-p :initarg :deleted
-              :initform nil
-              :reader foreign-method-deleted-p)))
+   (ref-qualifier :initarg :ref-qualifier
+                  :initform nil
+                  :reader foreign-method-ref-qualifier)))
+
+(defun copy-foreign-method (method new-name new-namespace new-id new-mangled-name new-owner)
+  (check-type method foreign-method)
+  (make-instance 'foreign-method
+                 :location (foreign-entity-location method)
+                 :id new-id
+                 :name new-name
+                 :namespace new-namespace
+                 :mangled new-mangled-name
+                 :template (foreign-entity-template-p method)
+                 :entity-parameters (foreign-entity-parameters method)
+                 :entity-arguments (foreign-entity-arguments method)
+                 :owner new-owner
+                 :source (foreign-entity-source method)
+                 :result-type (foreign-function-result-type method)
+                 :parameters (foreign-function-parameters method)
+                 :variadic (foreign-function-variadic-p method)
+                 :storage-class (foreign-function-storage-class method)
+                 :inlined (foreign-function-inlined-p method)
+                 :kind (foreign-method-kind method)
+                 :constructor-kind (foreign-method-constructor-kind method)
+                 :static (foreign-method-static-p method)
+                 :const (foreign-method-const-p method)
+                 :ref-qualifier (foreign-method-ref-qualifier method)))
 
 
 ;;;

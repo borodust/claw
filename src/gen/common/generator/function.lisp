@@ -168,21 +168,22 @@
         (string= (claw.spec:foreign-entity-name result-type) "void"))
        (format stream "~A;" invocation))
       (result-type-adapted-from
-       (let* ((unconsted-result-type-c-name (claw.spec:format-foreign-entity-c-name
-                                             unconsted-result-type)))
-         (if (typep result-type-adapted-from 'claw.spec:foreign-reference)
-             (format stream "return (~A) ~@[~A~](&~A);"
-                     unconsted-result-type-c-name
-                     (when (claw.spec:foreign-reference-rvalue-p result-type-adapted-from)
-                       "std::move")
+       (if (typep result-type-adapted-from 'claw.spec:foreign-reference)
+           (if (claw.spec:foreign-reference-rvalue-p result-type-adapted-from)
+               (format stream "return (&(~A&)~A);"
+                       (claw.spec:format-foreign-entity-c-name
+                         (claw.spec:foreign-enveloped-entity unconsted-result-type))
+                       invocation)
+               (format stream "return (~A) (&~A);"
+                       (claw.spec:format-foreign-entity-c-name unconsted-result-type)
+                       invocation))
+         (if (eq *adapt-mode* :c++)
+             (format stream "new (__claw_result_) ~A(~A);~%return __claw_result_;"
+                     (claw.spec:format-full-foreign-entity-name
+                       (claw.spec:foreign-enveloped-entity unconsted-result-type))
                      invocation)
-             (if (eq *adapt-mode* :c++)
-                 (format stream "new (__claw_result_) ~A(~A);~%return __claw_result_;"
-                         (claw.spec:format-full-foreign-entity-name
-                          (claw.spec:foreign-enveloped-entity unconsted-result-type))
-                         invocation)
-                 (format stream "(*__claw_result_) = ~A;~%return __claw_result_;"
-                         invocation)))))
+             (format stream "(*__claw_result_) = ~A;~%return __claw_result_;"
+                     invocation))))
       ((typep unconsted-result-type 'claw.spec:foreign-pointer)
        (format stream "return (~A) ~A;"
                (claw.spec:format-foreign-entity-c-name result-type)

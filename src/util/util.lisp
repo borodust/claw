@@ -233,9 +233,10 @@
     (if (or path (not system))
         (flet ((%relative (base rel)
                  (let ((base (uiop:ensure-directory-pathname base)))
-                   (uiop:merge-pathnames* (typecase rel
-                                            (pathname rel)
-                                            (t (string rel)))
+                   (uiop:merge-pathnames* (cond ((pathnamep rel) rel)
+                                                ((and system (symbolp rel))
+                                                 (asdf-path (asdf:find-system system t) rel))
+                                                (t (string rel)))
                                           base))))
           (reduce #'%relative relative :initial-value (or path
                                                           *default-pathname-defaults*)))

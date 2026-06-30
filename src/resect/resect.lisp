@@ -502,6 +502,16 @@
     (with-slots (deps) this
       (push dependent deps))))
 
+(defmethod foreign-type-assignable-p ((record resect-record))
+  (and (call-next-method)
+       ;; For templates like `std::optional', `std::vector', etc., we don't see the class
+       ;; declaration, but it's a pretty safe assumption that an instantiation includes at least
+       ;; one field of the argument type.
+       (every (lambda (arg)
+                (or (not (typep (foreign-entity-parameter arg) 'foreign-entity-type-parameter))
+                    (foreign-type-assignable-p (foreign-entity-value arg))))
+              (arguments-of record))))
+
 (defclass resect-struct (resect-record foreign-struct) ())
 
 (defclass resect-union (resect-record foreign-union) ())
@@ -798,6 +808,11 @@
                              :bit-size (%resect:type-size decl-type)
                              :bit-alignment (%resect:type-alignment decl-type)
                              :plain-old-data-type (%resect:type-plain-old-data-p decl-type)
+                             :explicit-copy-constructor (%resect:type-has-copy-constructor-p decl-type)
+                             :deleted-copy-constructor (%resect:type-copy-constructor-deleted-p decl-type)
+                             ;; Move assigment ops don't matter for our purposes.
+                             :explicit-assignment (%resect:type-has-copy-assignment-p decl-type)
+                             :deleted-assignment (%resect:type-copy-assignment-deleted-p decl-type)
                              :abstract (%resect:record-abstract-p decl)
                              :private (or (foreign-entity-private-p owner)
                                           (not (publicp decl))

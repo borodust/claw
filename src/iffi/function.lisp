@@ -46,7 +46,9 @@
                               do (format out "~&  '") (prin1 type out))
                         (format out ")")
                         (format out "~&~A~&~%" doc))))))
-    (setf (documentation (symbol-function name) t) (format-docs))))
+    ;; This used to do (setf (documentation (symbol-function name) t) ...),
+    ;; but somehow, on rare occasions, `name' wasn't fbound yet.
+    (setf (documentation name 'function) (format-docs))))
 
 
 (defun (setf intricate-function-pointer-extractor) (value name &rest arg-types)

@@ -214,7 +214,7 @@
           (:function-prototype (%overtype :void))
           (:function-prototype-pointer (let ((overriden (%overtype :function-prototype-pointer)))
                                          (if (eq overriden :function-prototype-pointer)
-                                             (%overtype :void)
+                                             (%overtype :pointer)
                                              (let ((result-type type)
                                                    (param-types opts))
                                                (list* overriden

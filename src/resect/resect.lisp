@@ -848,21 +848,6 @@
   (parse-record-declaration type decl from-type))
 
 
-(defmethod parse-type (category (kind (eql :struct)) type)
-  (declare (ignore category kind))
-  (parse-declaration-by-kind (%resect:type-declaration type) type))
-
-
-(defmethod parse-type (category (kind (eql :union)) type)
-  (declare (ignore category kind))
-  (parse-declaration-by-kind (%resect:type-declaration type) type))
-
-
-(defmethod parse-type (category (kind (eql :class)) type)
-  (declare (ignore category kind))
-  (parse-declaration-by-kind (%resect:type-declaration type) type))
-
-
 ;;;
 ;;; FUNCTION
 ;;;
@@ -1198,6 +1183,15 @@
 
 (defmethod parse-type ((category (eql :aux)) (kind (eql :dependent)) type)
   (make-unrecognized-type type category kind))
+
+;;; There was no method on `foreign-entity-id' for these.  The result is used as an
+;;; internal ID only, so resetting the counter between runs is not necessary.
+;;; Noticed after warning:
+;;;   Failed to recognize type of RECORD kind from UNIQUE category: std::basic_string<char, std::char_traits<char>, std::allocator<char>>
+;;; On debug, I found that the type's decl was a null foreign pointer.  I don't know why.
+(defvar *unrecognized-type-id-gensym-counter* 0)
+(defmethod claw.spec::foreign-entity-id ((entity unrecognized-type))
+  (format nil "unrecognized-type-~D" (incf *unrecognized-type-id-gensym-counter*)))
 
 
 ;;;

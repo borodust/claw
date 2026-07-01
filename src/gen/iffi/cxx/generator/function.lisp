@@ -67,25 +67,28 @@
          (adapted-cname (register-adapted-function adapted-function))
          (extractor-cname (when (function-pointer-extractor-required-p full-name)
                             (register-adapted-function (adapt-pointer-extractor entity)))))
-    (export-symbol name)
-    `((iffi:defifun (,adapted-cname ,name
-                                    ,@(when extractor-cname
-                                        `(:pointer-extractor ,extractor-cname))
-                                    ,@(when (and (typep entity 'claw.spec:foreign-method)
-                                                 (claw.spec:foreign-method-const-p entity))
-                                        `(:non-mutating t))
-                                    ,@(unless *inline-functions*
-                                        `(:inline nil)))
-          ,result-type
-        ,(format nil "~A;~&~A"
-                 (claw.spec:foreign-entity-source entity)
-                 (let ((location (claw.spec:foreign-entity-location entity)))
-                   (if (uiop:emptyp (claw.spec:foreign-location-path location))
-                       "(No source location found)"
-                       (claw.spec:format-foreign-location location))))
-        ,@params
-        ,@(when (claw.spec:foreign-function-variadic-p entity)
-            (list 'cl:&rest))))))
+    ;; We can get a null `name' in certain circumstances involving assignment operators
+    ;; generated for unnamed structs.
+    (when name
+      (export-symbol name)
+      `((iffi:defifun (,adapted-cname ,name
+                                      ,@(when extractor-cname
+                                          `(:pointer-extractor ,extractor-cname))
+                                      ,@(when (and (typep entity 'claw.spec:foreign-method)
+                                                   (claw.spec:foreign-method-const-p entity))
+                                          `(:non-mutating t))
+                                      ,@(unless *inline-functions*
+                                          `(:inline nil)))
+            ,result-type
+          ,(format nil "~A;~&~A"
+                   (claw.spec:foreign-entity-source entity)
+                   (let ((location (claw.spec:foreign-entity-location entity)))
+                     (if (uiop:emptyp (claw.spec:foreign-location-path location))
+                         "(No source location found)"
+                         (claw.spec:format-foreign-location location))))
+          ,@params
+          ,@(when (claw.spec:foreign-function-variadic-p entity)
+              (list 'cl:&rest)))))))
 
 ;;;
 ;;; FUNCTION

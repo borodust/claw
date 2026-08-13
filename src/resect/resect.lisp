@@ -695,7 +695,7 @@
                                      ((cast-operator-p pure-method-name
                                                        result-type)
                                       (string+ "operator "
-                                               (foreign-entity-name result-type)))
+                                               (format-full-foreign-entity-name result-type)))
 
                                      (t (%resect:type-method-name type-method)))
                              :owner entity

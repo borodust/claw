@@ -141,8 +141,6 @@
          (namespaces (when-let ((namespace (adapted-function-namespace function)))
                        (ppcre:split "::" namespace))))
     (format stream "~&~%")
-    (loop for namespace in namespaces
-          do (format stream "~&namespace ~A {" namespace))
     (format stream "~&__CLAW_API ")
     (if (enveloped-function-protoype-p result-type)
         (format stream "~A {~%~A~%}"
@@ -153,9 +151,7 @@
                 (claw.spec:format-foreign-entity-c-name result-type)
                 name
                 params
-                body))
-    (loop for nil in namespaces
-          do (format stream "~&}"))))
+                body))))
 
 
 (defun %generate-adapted-function-definitions (functions invocation-prefix)

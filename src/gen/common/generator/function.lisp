@@ -96,8 +96,8 @@
                                   :location param-location)
                         :name (c-name->lisp param-name :parameter)
                         :value (cond
-                                 ((and (typep adapted 'claw.spec:foreign-reference)
-                                       (claw.spec:foreign-reference-rvalue-p adapted))
+                                 ((and adapted
+                                       (not (claw.spec:foreign-type-copy-constructible-p adapted)))
                                   (format nil "std::move(*~A)" param-name))
                                  (adapted (format nil "*~A" param-name))
                                  (t param-name))

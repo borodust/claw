@@ -109,8 +109,10 @@
                            recognize-strings
                            (inline-functions t)
                            (ignore-entities (constantly nil))
-                           use-float-features)
+                           use-float-features
+			   exception-handler)
         configuration
+      (uiop:ensure-package in-package :use nil)
       (let* ((in-package (eval in-package))
              (*trim-enum-prefix-p* (eval trim-enum-prefix))
              (*adapter* (when with-adapter
@@ -140,6 +142,11 @@
              (*inline-functions* inline-functions)
              (*use-float-features* use-float-features)
              (*float-features-requested* nil)
+	     ;; The Lisp handler must be supplied as a string, since its package may not exist
+	     ;; yet at the time the `defwrapper' form is read.
+	     (*exception-handler* (and exception-handler
+				       (list :c++ (getf exception-handler :c++)
+					     :lisp (read-from-string (getf exception-handler :lisp)))))
              (*always-generate-adapter* (or (claw.wrapper:wrapper-always-generate wrapper)
                                             (featurep :claw-regen-adapter)))
              (rename-symbols (eval (parse-renaming-pipeline symbolicate-names)))
@@ -154,7 +161,6 @@
              (*entities* (remove-if (eval ignore-entities)
                                     (stable-sort entities #'string<
                                                  :key #'claw.spec:foreign-entity-id))))
-        (uiop:ensure-package in-package :use nil)
         (loop for package in with-extra-packages
               do (uiop:ensure-package package :use nil))
         (with-symbol-renaming (in-package rename-symbols)

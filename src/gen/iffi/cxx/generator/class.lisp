@@ -207,7 +207,8 @@
                                                   (claw.spec:foreign-entity-mangled-name entity)
                                                   "_claw_fc")
                                         :result-type (claw.spec:foreign-function-result-type fun-proto)
-                                        :parameters (claw.spec:foreign-function-parameters fun-proto))
+                                        :parameters (claw.spec:foreign-function-parameters fun-proto)
+					:noexcept t)
                          :mode :c++)))
     (export-symbol name)
     `((iffi:define-intricate-function-class (,name

@@ -42,11 +42,19 @@
         for iffi-type = (when from
                           (entity->iffi-type
                            (claw.spec:foreign-enveloped-entity from)))
+        for ref-qual = (and (string= (claw.spec:foreign-entity-name param)
+                                     "__claw_this_")
+                            (let ((rq (claw.spec:foreign-method-ref-qualifier
+                                       (adapted-function-entity adapted-function))))
+                              (and (not (eq rq ':none)) rq)))
         collect `(,name ,cffi-type
                         ,@(unless (and (equal cffi-type cffi-type-no-override)
                                        (or (null iffi-type)
-                                           (equal cffi-type iffi-type)))
-                            (list :signed-as (or iffi-type cffi-type-no-override))))))
+                                           (equal cffi-type iffi-type))
+                                       (null ref-qual))
+                            (list :signed-as
+                                  (append (ensure-cons (or iffi-type cffi-type-no-override))
+                                          (and ref-qual (list ref-qual))))))))
 
 
 (defun generate-function-binding (entity)
@@ -66,26 +74,43 @@
 
          (adapted-cname (register-adapted-function adapted-function))
          (extractor-cname (when (function-pointer-extractor-required-p full-name)
-                            (register-adapted-function (adapt-pointer-extractor entity)))))
-    (export-symbol name)
-    `((iffi:defifun (,adapted-cname ,name
-                                    ,@(when extractor-cname
-                                        `(:pointer-extractor ,extractor-cname))
-                                    ,@(when (and (typep entity 'claw.spec:foreign-method)
-                                                 (claw.spec:foreign-method-const-p entity))
-                                        `(:non-mutating t))
-                                    ,@(unless *inline-functions*
-                                        `(:inline nil)))
-          ,result-type
-        ,(format nil "~A;~&~A"
-                 (claw.spec:foreign-entity-source entity)
-                 (let ((location (claw.spec:foreign-entity-location entity)))
-                   (if (uiop:emptyp (claw.spec:foreign-location-path location))
-                       "(No source location found)"
-                       (claw.spec:format-foreign-location location))))
-        ,@params
-        ,@(when (claw.spec:foreign-function-variadic-p entity)
-            (list 'cl:&rest))))))
+                            (register-adapted-function (adapt-pointer-extractor entity))))
+	 (handling-exceptions-p (and claw.generator.common::*exception-handler*
+				     (not (claw.spec:foreign-function-noexcept-p entity)))))
+    (when (and extractor-cname handling-exceptions-p)
+      ;; Calling through a C++ function pointer that then threw an exception would be a good way
+      ;; to ruin your day.  Just use a (Lisp) lambda expression that calls the target function;
+      ;; then exception handling can work.
+      (error "Unimplemented: function pointer extraction combined with exception handling;~@
+              for ~A" full-name))
+    ;; We can get a null `name' in certain circumstances involving assignment operators
+    ;; generated for unnamed structs.
+    (when name
+      (export-symbol name)
+      `((iffi:defifun (,adapted-cname ,name
+                                      ,@(when extractor-cname
+                                          `(:pointer-extractor ,extractor-cname))
+                                      ,@(when (and (typep entity 'claw.spec:foreign-method)
+                                                   (claw.spec:foreign-method-const-p entity))
+                                          `(:non-mutating t))
+                                      ,@(unless *inline-functions*
+                                          `(:inline nil))
+				      ,@(when handling-exceptions-p
+					  `(:exception-handler ,(getf claw.generator.common::*exception-handler*
+								      :lisp))))
+            ,result-type
+          ,(format nil "~A;~&~A"
+                   (claw.spec:foreign-entity-source entity)
+                   (let ((location (claw.spec:foreign-entity-location entity)))
+                     (if (uiop:emptyp (claw.spec:foreign-location-path location))
+                         "(No source location found)"
+                         (claw.spec:format-foreign-location location))))
+          ;; We suppress the exception parameter in the `defifun' form, because the client doesn't
+	  ;; pass it explicitly and doesn't need to know about it.  Of course, it's still visible
+	  ;; in the C++ shim.
+	  ,@(if handling-exceptions-p (cdr params) params)
+          ,@(when (claw.spec:foreign-function-variadic-p entity)
+              (list 'cl:&rest)))))))
 
 ;;;
 ;;; FUNCTION

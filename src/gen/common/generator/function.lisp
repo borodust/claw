@@ -138,9 +138,10 @@
 
 (defun format-adapted-body (entity adapted-params result-type result-type-adapted-from stream)
   (let* ((name (claw.spec:foreign-entity-name entity))
-         (param-names (mapcar (lambda (param)
-                                (getf param :value))
-                              adapted-params))
+         (param-names
+           ;; The `remove nil' filters out `__claw_this_' and `__claw_result_'.
+           (remove nil (mapcar (lambda (param) (getf param :value))
+                               adapted-params)))
          (invocation (if (typep entity 'claw.spec:foreign-method)
                          (cond
                            ((claw.spec:foreign-constructor-p entity)
@@ -151,42 +152,61 @@
                             (format nil "~A(~{~A~^, ~})"
                                     (claw.spec:format-full-foreign-entity-name entity)
                                     param-names))
+                           ;; For rvalue-qualified methods, be careful to generate an rvalue;
+                           ;; this is occasionally needed for overload disambiguation.
+                           ((eq (claw.spec:foreign-method-ref-qualifier entity) :rvalue)
+                            (format nil "std::move(*__claw_this_).~A(~{~A~^, ~})"
+                                    name
+                                    param-names))
                            (t
                             (format nil "__claw_this_->~A(~{~A~^, ~})"
                                     name
                                     param-names)))
                          (format nil "~A(~{~A~^, ~})"
                                  (decorate-if-instantiated-function
-                                  entity
-                                  (claw.spec:format-full-foreign-entity-name entity))
+                                   entity
+                                   (claw.spec:format-full-foreign-entity-name entity))
                                  param-names)))
-         (unconsted-result-type (unconst-adapted-result-type result-type)))
+         (unconsted-result-type (unconst-adapted-result-type result-type))
+         ;; Store the result if needed, and force the type of `invocation' to be either
+         ;; a primitive or a pointer.
+         (invocation (cond ((typep result-type 'claw.spec:foreign-primitive)
+                            invocation)
+                           (result-type-adapted-from
+                            (cond ((typep result-type-adapted-from 'claw.spec:foreign-reference)
+                                   (let ((unrefed-result-type
+                                           (claw.spec:format-foreign-entity-c-name
+                                             (claw.spec:foreign-enveloped-entity unconsted-result-type))))
+                                     (format nil "&(~A&)~A"
+                                             unrefed-result-type invocation)))
+                                  ((eq *adapt-mode* :c++)
+                                   (format nil "new (__claw_result_) ~A(~A)"
+                                           (claw.spec:format-full-foreign-entity-name
+                                             (claw.spec:foreign-enveloped-entity unconsted-result-type))
+                                           invocation))
+                                  (t
+                                   (format nil "((*__claw_result_) = ~A, __claw_result_)"
+                                           invocation))))
+                           ((typep unconsted-result-type 'claw.spec:foreign-pointer)
+                            (format nil "(~A) ~A"
+                                    (claw.spec:format-foreign-entity-c-name result-type)
+                                    invocation))
+                           (t invocation)))
+         (invocation (if (and *exception-handler*
+                              (not (claw.spec:foreign-function-noexcept-p entity)))
+                         (let* ((bare-params (mapcar (lambda (param)
+                                                       (claw.spec:foreign-entity-name (getf param :adapted)))
+                                                     adapted-params)))
+                           (format nil "~A(__claw_excp_msg_, ~
+                                           [](~{auto ~A~^, ~}) -> decltype(auto) { return ~A; }~{, ~A~})"
+                                   (getf *exception-handler* :c++) bare-params invocation bare-params))
+                       invocation)))
     (format-location-comment entity stream)
     (cond
       ((and
         (typep result-type 'claw.spec:foreign-primitive)
         (string= (claw.spec:foreign-entity-name result-type) "void"))
        (format stream "~A;" invocation))
-      (result-type-adapted-from
-       (let* ((unconsted-result-type-c-name (claw.spec:format-foreign-entity-c-name
-                                             unconsted-result-type)))
-         (if (typep result-type-adapted-from 'claw.spec:foreign-reference)
-             (format stream "return (~A) ~@[~A~](&~A);"
-                     unconsted-result-type-c-name
-                     (when (claw.spec:foreign-reference-rvalue-p result-type-adapted-from)
-                       "std::move")
-                     invocation)
-             (if (eq *adapt-mode* :c++)
-                 (format stream "new (__claw_result_) ~A(~A);~%return __claw_result_;"
-                         (claw.spec:format-full-foreign-entity-name
-                          (claw.spec:foreign-enveloped-entity unconsted-result-type))
-                         invocation)
-                 (format stream "(*__claw_result_) = ~A;~%return __claw_result_;"
-                         invocation)))))
-      ((typep unconsted-result-type 'claw.spec:foreign-pointer)
-       (format stream "return (~A) ~A;"
-               (claw.spec:format-foreign-entity-c-name result-type)
-               invocation))
       (t (format stream "return ~A;" invocation)))))
 
 
@@ -196,7 +216,36 @@
         (adapt-parameters entity)
       (multiple-value-bind (result-type result-type-adapted-from)
           (adapt-type (claw.spec:foreign-function-result-type entity))
-        (let* ((body (with-output-to-string (body)
+        (let* ((adapted-params
+                 (if (and (typep entity 'claw.spec:foreign-method)
+                          (not (claw.spec:foreign-method-static-p entity)))
+                     (let* ((owner (claw.spec:foreign-owner entity))
+                            ;; Constness of `this' occasionally matters for
+                            ;; overload resolution.
+                            (target-type
+                              (if (claw.spec:foreign-method-const-p entity)
+                                  (make-instance 'claw.spec:foreign-const-qualifier
+                                                 :enveloped owner)
+                                owner))
+                            (this-type
+                              (make-instance 'claw.spec:foreign-pointer
+                                             :enveloped target-type)))
+                       (list* (list :adapted (make-instance
+                                               'claw.spec:foreign-parameter
+                                               :name "__claw_this_"
+                                               :enveloped this-type))
+                              adapted-params))
+                   adapted-params))
+               (adapted-params
+                 (if (and result-type-adapted-from
+                          (not (typep result-type-adapted-from 'claw.spec:foreign-reference)))
+                     (list* (list :adapted (make-instance
+                                             'claw.spec:foreign-parameter
+                                             :name "__claw_result_"
+                                             :enveloped result-type))
+                            adapted-params)
+                   adapted-params))
+               (body (with-output-to-string (body)
                        (format-adapted-body entity
                                             adapted-params
                                             result-type
@@ -206,22 +255,21 @@
                                  (cons (getf param :adapted)
                                        (getf param :from)))
                                adapted-params))
-               (params (if (and (typep entity 'claw.spec:foreign-method)
-                                (not (claw.spec:foreign-method-static-p entity)))
-                           (list* (make-instance
+               (params (if (and *exception-handler*
+                                (not (claw.spec:foreign-function-noexcept-p entity)))
+                           (cons (make-instance
                                    'claw.spec:foreign-parameter
-                                   :name "__claw_this_"
-                                   :enveloped (make-instance 'claw.spec:foreign-pointer
-                                                             :enveloped (claw.spec:foreign-owner entity)))
-                                  params)
-                           params))
-               (params (if (and result-type-adapted-from
-                                (not (typep result-type-adapted-from 'claw.spec:foreign-reference)))
-                           (list* (make-instance
-                                   'claw.spec:foreign-parameter
-                                   :name "__claw_result_"
-                                   :enveloped result-type)
-                                  params)
+                                   :name "__claw_excp_msg_"
+                                   :enveloped (make-instance
+                                                'claw.spec:foreign-pointer
+                                                :enveloped (make-instance
+                                                             'claw.spec:foreign-pointer
+                                                             :enveloped (make-instance
+                                                                          'claw.spec:foreign-primitive
+                                                                          :id "char" :name "char"
+                                                                          :plain-old-data-type t
+                                                                          :bit-size 8 :bit-alignment 8))))
+                                 params)
                            params)))
           (values
            (make-instance 'adapted-function

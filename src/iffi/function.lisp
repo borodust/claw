@@ -85,8 +85,12 @@
           finally (return (let ((arg-types (append (when const-p
                                                      (list :const))
                                                    arg-types)))
-                            (if-let ((fu (apply #'intricate-function name arg-types)))
-                              (apply fu arg-values)
+                            (if-let ((fun+hndlr (apply #'intricate-function name arg-types)))
+                              (if (cadr fun+hndlr)
+                                  (funcall (cadr fun+hndlr)
+                                           (lambda (excp-msg-ptr)
+                                             (apply (car fun+hndlr) excp-msg-ptr arg-values)))
+                                (apply (car fun+hndlr) arg-values))
                               (error "Intricate function with signature ~A ~A not found" name arg-types)))))))
 
 
@@ -108,23 +112,27 @@
                       (let ((arg-types (append (when const-p
                                                  (list :const))
                                                arg-types)))
-                        (if-let ((function (apply #'intricate-function quoted arg-types)))
-                          `(,function ,@arg-values)
+                        (if-let ((fun+hndlr (apply #'intricate-function quoted arg-types)))
+                          (if (cadr fun+hndlr)
+                              (with-gensyms (excp-msg-ptr)
+                                `(,(cadr fun+hndlr) (lambda (,excp-msg-ptr)
+                                                      (,(car fun+hndlr) ,excp-msg-ptr ,@arg-values))))
+                            `(,(car fun+hndlr) ,@arg-values))
                           (progn
                             (warn "Function ~A is not defined for parameters ~A " quoted arg-types)
                             whole)))
                       whole)))))
 
 
-(defun expand-intricate-function-body (name arguments)
-  `(intricate-funcall ',name ,@arguments))
-
-
 (defun format-defifun-documentation (return-type param-config doc)
   (if (null param-config)
       doc
       (with-output-to-string (out)
-        (let ((*print-case* :downcase))
+        (let ((*print-case* :downcase)
+              (rest-p nil))
+          (when (eq (car (last param-config)) '&rest)
+            (setq param-config (butlast param-config))
+            (setq rest-p t))
           (format out "Adapted result: ")
           (prin1 return-type out)
           (format out "~&Adapted parameters:")
@@ -133,6 +141,8 @@
                    (prin1 type out)
                    (format out " ")
                    (princ name out))
+          (when rest-p
+            (format out "~&..."))
           (format out "~&~%~A" doc)))))
 
 
@@ -143,7 +153,8 @@
           cffi-opts
           pointer-extractor
           const-p
-          (inline-p t))
+          (inline-p t)
+          exception-handler)
       (if (stringp (first configuration))
           (setf doc (first configuration)
                 param-config (rest configuration))
@@ -153,6 +164,7 @@
                  (:pointer-extractor (setf pointer-extractor value))
                  (:non-mutating (setf const-p value))
                  (:inline (setf inline-p value))
+                 (:exception-handler (setf exception-handler value))
                  (t (setf cffi-opts (list* name value cffi-opts)))))
       (let* ((signed-param-types
                (append
@@ -160,7 +172,7 @@
                   '(:const))
                 (loop for param in param-config
                       if (eq param '&rest)
-                        collect '&rest
+                        collect ''&rest
                       else
                         collect
                         (destructuring-bind (cffi-type
@@ -173,15 +185,18 @@
              (intricately-defined (gethash name *intricate-table*))
              (cfun-name (format-symbol (symbol-package name) "~A~A$~A" 'iffi-cfun$ name mangled)))
         `(progn
-           ,@(when inline-p
+           ;; If `&rest' is present, `cffi:defcfun' defines `cfun-name' as a macro.
+           ,@(when (and inline-p (not (eq (car (last param-config)) '&rest)))
                `((declaim (inline ,cfun-name))))
            (cffi:defcfun (,mangled ,cfun-name ,@(nreverse cffi-opts)) ,return-type
              ,@(when doc
                  (list doc))
-             ,@(loop for (param-name type) in param-config
-                     collect `(,param-name ,type)))
+             ,@(if exception-handler
+                   `((%%claw-excp-msg- (:pointer :string)) ,@param-config)
+                 param-config))
            (meta-eval
-             (setf (intricate-function ',name ,@signed-param-types) ',cfun-name))
+             (setf (intricate-function ',name ,@signed-param-types)
+                   '(,cfun-name ,exception-handler)))
            ,@(when pointer-extractor
                (let ((extractor-cfun-name (symbolicate cfun-name '$pointer-extractor)))
                  `(,@(when inline-p
@@ -197,7 +212,7 @@
                `((defun ,name (&rest args)
                    (apply #'intricate-funcall ',name args))
                  (define-compiler-macro ,name (&rest arguments)
-                   (expand-intricate-function-body ',name arguments))))
+                   `(intricate-funcall ',',name ,@arguments))))
            ,@(when (and doc
                         (not (member :iffi-skip-documentation *features*)))
                `((meta-eval

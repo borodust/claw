@@ -42,11 +42,19 @@
         for iffi-type = (when from
                           (entity->iffi-type
                            (claw.spec:foreign-enveloped-entity from)))
+        for ref-qual = (and (string= (claw.spec:foreign-entity-name param)
+                                     "__claw_this_")
+                            (let ((rq (claw.spec:foreign-method-ref-qualifier
+                                       (adapted-function-entity adapted-function))))
+                              (and (not (eq rq ':none)) rq)))
         collect `(,name ,cffi-type
                         ,@(unless (and (equal cffi-type cffi-type-no-override)
                                        (or (null iffi-type)
-                                           (equal cffi-type iffi-type)))
-                            (list :signed-as (or iffi-type cffi-type-no-override))))))
+                                           (equal cffi-type iffi-type))
+                                       (null ref-qual))
+                            (list :signed-as
+                                  (append (ensure-cons (or iffi-type cffi-type-no-override))
+                                          (and ref-qual (list ref-qual))))))))
 
 
 (defun generate-function-binding (entity)

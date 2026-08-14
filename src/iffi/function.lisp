@@ -173,7 +173,8 @@
              (intricately-defined (gethash name *intricate-table*))
              (cfun-name (format-symbol (symbol-package name) "~A~A$~A" 'iffi-cfun$ name mangled)))
         `(progn
-           ,@(when inline-p
+           ;; If `&rest' is present, `cffi:defcfun' defines `cfun-name' as a macro.
+	   ,@(when (and inline-p (not (eq (car (last param-config)) '&rest)))
                `((declaim (inline ,cfun-name))))
            (cffi:defcfun (,mangled ,cfun-name ,@(nreverse cffi-opts)) ,return-type
              ,@(when doc

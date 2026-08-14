@@ -1,6 +1,5 @@
 (cl:in-package :claw.generator.common)
 
-
 (defvar *adapt-mode* :c)
 
 (defgeneric adapt-type (entity)
@@ -151,6 +150,12 @@
                             (format nil "~A(~{~A~^, ~})"
                                     (claw.spec:format-full-foreign-entity-name entity)
                                     param-names))
+                           ;; For rvalue-qualified methods, be careful to generate an rvalue;
+                           ;; this is occasionally needed for overload disambiguation.
+                           ((eq (claw.spec:foreign-method-ref-qualifier entity) :rvalue)
+                            (format nil "std::move(*__claw_this_).~A(~{~A~^, ~})"
+                                    name
+                                    param-names))
                            (t
                             (format nil "__claw_this_->~A(~{~A~^, ~})"
                                     name
@@ -208,12 +213,22 @@
                                adapted-params))
                (params (if (and (typep entity 'claw.spec:foreign-method)
                                 (not (claw.spec:foreign-method-static-p entity)))
-                           (list* (make-instance
-                                   'claw.spec:foreign-parameter
-                                   :name "__claw_this_"
-                                   :enveloped (make-instance 'claw.spec:foreign-pointer
-                                                             :enveloped (claw.spec:foreign-owner entity)))
-                                  params)
+                           (let* ((owner (claw.spec:foreign-owner entity))
+                                  ;; Constness of `this' occasionally matters for
+                                  ;; overload resolution.
+                                  (target-type
+                                    (if (claw.spec:foreign-method-const-p entity)
+                                        (make-instance 'claw.spec:foreign-const-qualifier
+                                                       :enveloped owner)
+                                        owner))
+                                  (this-type
+                                    (make-instance 'claw.spec:foreign-pointer
+                                                   :enveloped target-type)))
+                             (list* (make-instance
+                                      'claw.spec:foreign-parameter
+                                      :name "__claw_this_"
+                                      :enveloped this-type)
+                                    params))
                            params))
                (params (if (and result-type-adapted-from
                                 (not (typep result-type-adapted-from 'claw.spec:foreign-reference)))

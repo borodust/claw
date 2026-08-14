@@ -673,56 +673,58 @@
                            (%resect:function-proto-result-type method-prototype)
                            (parse-type-by-category
                             (%resect:function-proto-result-type method-prototype)))))
-        (multiple-value-bind (method newp)
-            (register-entity 'foreign-method
-                             :id (%resect:type-method-id type-method)
-                             :kind (cond
-                                     (constructor-p
-                                      :constructor)
-                                     ((starts-with #\~ pure-method-name)
-                                      :destructor)
-                                     ((starts-with-subseq "operator" pure-method-name)
-                                      :operator)
-                                     (t :regular))
-                             :source (if (cffi:null-pointer-p method-decl)
-                                         (%resect:type-method-source type-method)
+        (unless (%resect:method-deleted-p method-decl)
+          (multiple-value-bind (method newp)
+              (register-entity 'foreign-method
+                               :id (%resect:type-method-id type-method)
+                               :kind (cond
+                                       (constructor-p
+                                        :constructor)
+                                       ((starts-with #\~ pure-method-name)
+                                        :destructor)
+                                       ((starts-with-subseq "operator" pure-method-name)
+                                        :operator)
+                                       (t :regular))
+                               :source (if (cffi:null-pointer-p method-decl)
+                                           (%resect:type-method-source type-method)
                                          (%resect:declaration-source method-decl))
-                             :name (cond
-                                     (constructor-p
-                                      (string+ pure-method-name
-                                               (extract-template-argument-string
-                                                (%resect:type-name record-type))))
-                                     ((cast-operator-p pure-method-name
-                                                       result-type)
-                                      (string+ "operator "
-                                               (foreign-entity-name result-type)))
+                               :name (cond
+                                       (constructor-p
+                                        (string+ pure-method-name
+                                                 (extract-template-argument-string
+                                                   (%resect:type-name record-type))))
+                                       ((cast-operator-p pure-method-name
+                                                         result-type)
+                                        (string+ "operator "
+                                                 (foreign-entity-name result-type)))
 
-                                     (t (%resect:type-method-name type-method)))
-                             :owner entity
-                             :namespace (unless-empty
-                                         (if (cffi:null-pointer-p method-decl)
-                                             (claw.spec:foreign-entity-namespace entity)
-                                             (%resect:declaration-namespace method-decl)))
-                             :mangled mangled-name
-                             :location (if (cffi:null-pointer-p method-decl)
-                                           (make-instance 'foreign-location
-                                                          :path ""
-                                                          :line 0
-                                                          :column 0)
+                                       (t (%resect:type-method-name type-method)))
+                               :owner entity
+                               :namespace (unless-empty
+                                            (if (cffi:null-pointer-p method-decl)
+                                                (claw.spec:foreign-entity-namespace entity)
+                                              (%resect:declaration-namespace method-decl)))
+                               :mangled mangled-name
+                               :location (if (cffi:null-pointer-p method-decl)
+                                             (make-instance 'foreign-location
+                                                            :path ""
+                                                            :line 0
+                                                            :column 0)
                                            (make-declaration-location method-decl))
-                             :result-type result-type
-                             :parameters (parse-instantiated-method-parameters
-                                          (%resect:function-proto-parameters method-prototype)
-                                          (unless (cffi:null-pointer-p method-decl)
-                                            (%resect:method-parameters method-decl)))
-                             :variadic (%resect:function-proto-variadic-p method-prototype)
-                             :static (%resect:type-method-static-p type-method)
-                             :const (%resect:type-method-const-p type-method)
-                             :template (if (cffi:null-pointer-p method-decl)
-                                           nil
+                               :result-type result-type
+                               :parameters (parse-instantiated-method-parameters
+                                             (%resect:function-proto-parameters method-prototype)
+                                             (unless (cffi:null-pointer-p method-decl)
+                                               (%resect:method-parameters method-decl)))
+                               :variadic (%resect:function-proto-variadic-p method-prototype)
+                               :static (%resect:type-method-static-p type-method)
+                               :const (%resect:type-method-const-p type-method)
+                               :ref-qualifier (%resect:method-ref-qualifier method-decl)
+                               :template (if (cffi:null-pointer-p method-decl)
+                                             nil
                                            (%resect:declaration-template-p method-decl)))
-          (when newp
-            (setf (gethash mangled-name *mangled-table*) method)))))))
+            (when newp
+              (setf (gethash mangled-name *mangled-table*) method))))))))
 
 
 (defun method-exists-p (decl)
@@ -981,7 +983,8 @@
 
 
 (defmethod parse-declaration ((type (eql :function)) decl &key)
-  (unless (eq :static (%resect:function-storage-class decl))
+  (unless (or (eq :static (%resect:function-storage-class decl))
+              (%resect:function-deleted-p decl))
     (if (starts-with-subseq +instantiation-prefix+ (%resect:declaration-name decl))
         (on-post-parse
           (let ((template-mangled-name (subseq (%resect:declaration-name decl)

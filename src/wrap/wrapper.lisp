@@ -42,6 +42,7 @@
   framework-includes
   defines
   intrinsics
+  system-include-type
   system-includes)
 
 
@@ -64,9 +65,13 @@
                          framework-includes
                          defines
                          intrinsics
+                         (system-include-type '(:default))
                          system-includes
                        &allow-other-keys)
       (alist-plist opts)
+    (unless (member (car system-include-type) '(:default :clang :gcc))
+      (error ":system-include-type must be one of (:default :clang :gcc), not ~S"
+             (car system-include-type)))
     (with-evaluated-variables (language
                                standard)
       (with-evaluated-lists (headers
@@ -92,6 +97,7 @@
                               :headers headers
                               :includes includes
                               :framework-includes framework-includes
+                              :system-include-type (car system-include-type)
                               :system-includes system-includes
                               :defines defines
                               :intrinsics intrinsics
@@ -263,7 +269,8 @@
                       (%parse-opt 'standard target-parse-opts)
                       (%parse-opt 'standard common-parse-opts)))
            (features (target-options-features target-opts))
-           (triple (target-options-triple target-opts)))
+           (triple (target-options-triple target-opts))
+           (system-include-type (%parse-opt 'system-include-type common-parse-opts)))
       (make-parse-options :include-sources
                           (append
                            (%parse-opt 'include-sources common-parse-opts)
@@ -312,12 +319,14 @@
                           (or (append
                                (%parse-opt 'system-includes target-parse-opts)
                                (%parse-opt 'system-includes common-parse-opts))
-                              (list-system-include-paths language triple features))
+                              (list-system-include-paths language triple features
+                                                         system-include-type))
                           :framework-includes
                           (or (append
                                (%parse-opt 'framework-includes target-parse-opts)
                                (%parse-opt 'framework-includes common-parse-opts))
-                              (list-framework-paths language triple features))
+                              (list-framework-paths language triple features
+                                                    system-include-type))
                           :defines
                           (append
                            (%parse-opt 'defines common-parse-opts)

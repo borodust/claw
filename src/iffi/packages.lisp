@@ -27,6 +27,7 @@
            #:with-intricate-slots
 
            #:make-intricate-instance
+           #:initialize-intricate-instance
            #:destroy-intricate-instance
            #:with-intricate-instance
            #:with-intricate-instances

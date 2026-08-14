@@ -52,16 +52,16 @@
 ;;; INSTANCE
 ;;;
 (defun make-intricate-instance (name &rest args)
-  (let* ((record (find-intricate-record name))
-         (ptr (intricate-alloc name)))
+  (let* ((record (find-intricate-record name)))
     (unless record
       (error "Record with name ~A not found" name))
-    (if-let ((ctor (constructor-of record)))
-      (handler-case
-          (apply (constructor-of record) `(:pointer ,name) ptr args)
-        (serious-condition (condi) (intricate-free ptr) (error condi)))
-      (error "Constructor not found for record ~A" name))
-    ptr))
+    (let ((ptr (intricate-alloc name)))
+      (if-let ((ctor (constructor-of record)))
+        (handler-case
+            (apply (constructor-of record) `(:pointer ,name) ptr args)
+          (serious-condition (condi) (intricate-free ptr) (error condi)))
+        (error "Constructor not found for record ~A" name))
+      ptr)))
 
 
 (define-compiler-macro make-intricate-instance (&whole whole name &rest args)
@@ -73,15 +73,20 @@
         ((not record) (warn "Record with name ~A not found" quoted-name))
         ((not ctor) (warn "Constructor not found for record ~A" quoted-name))))
     (if ctor
-        (with-gensyms (ptr condi)
-          `(let ((,ptr (intricate-alloc ',quoted-name)))
-             (handler-case
-                 ;; FIXME: here we actually a break funcall protocol a bit
-                 ;; because if during args evaluation condition is raised it is
-                 ;; going to be consumed here with stack being unwound
-                 (,ctor '(:pointer ,quoted-name) ,ptr ,@args)
-               (serious-condition (,condi) (intricate-free ,ptr) (error ,condi)))
-             ,ptr))
+        (with-gensyms (ptr)
+          (let ((arg-bindings (mapcar (lambda (arg)
+                                        (if (and (consp arg) (not (eq (car arg) 'quote)))
+                                            (list :bind (gensym "ARG-") arg)
+                                          (list :nobind arg)))
+                                      args)))
+            ;; Evaluate the argument expressions first, to prevent a leak
+            ;; if one takes a nonlocal exit.
+            `(let (,@(mapcar #'cdr (remove-if-not (lambda (b) (eq (car b) :bind))
+                                                  arg-bindings))
+                   (,ptr (intricate-alloc ',quoted-name)))
+               (,ctor '(:pointer ,quoted-name) ,ptr
+                      ,@(mapcar #'cadr arg-bindings))
+               ,ptr)))
         whole)))
 
 
@@ -120,4 +125,31 @@
                  `((with-intricate-instance ,(first declarations)
                      ,@(expand-with-intricate-instances (rest declarations) body)))
                  `(,@body))))
-    (first (expand-with-intricate-instances declarations body))))
+    `(progn ,@(expand-with-intricate-instances declarations body))))
+
+
+(defun initialize-intricate-instance (name ptr &rest args)
+  "Initializes an instance of type `name' at `ptr' by calling a constructor.
+Use very carefully -- the allocation at `ptr' must be large enough to hold
+an instance of type `name'."
+  (let* ((record (find-intricate-record name)))
+    (unless record
+      (error "Record with name ~A not found" name))
+    (if-let ((ctor (constructor-of record)))
+      (handler-case
+          (apply (constructor-of record) `(:pointer ,name) ptr args)
+        (serious-condition (condi) (intricate-free ptr) (error condi)))
+      (error "Constructor not found for record ~A" name))
+    ptr))
+
+(define-compiler-macro initialize-intricate-instance (&whole whole name ptr &rest args)
+  (let* ((quoted-name (find-quoted name))
+         (record (find-intricate-record quoted-name))
+         (ctor (and record (constructor-of record))))
+    (when quoted-name
+      (cond
+        ((not record) (warn "Record with name ~A not found" quoted-name))
+        ((not ctor) (warn "Constructor not found for record ~A" quoted-name))))
+    (if ctor
+        `(,ctor '(:pointer ,quoted-name) ,ptr ,@args)
+        whole)))

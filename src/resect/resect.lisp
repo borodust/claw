@@ -317,9 +317,10 @@
 
 
 (defun make-declaration-location (declaration)
-  (let ((location (%resect:declaration-location declaration)))
+  (let* ((location (%resect:declaration-location declaration))
+	 (pathname (uiop:ensure-pathname (%resect:location-name location))))
     (make-instance 'foreign-location
-                   :path (uiop:ensure-pathname (%resect:location-name location))
+                   :path (pathname (enough-namestring pathname (claw.wrapper::map-path "")))
                    :line (%resect:location-line location)
                    :column (%resect:location-column location))))
 

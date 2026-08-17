@@ -29,7 +29,9 @@
                                               enforce-definitions
                                               enforce-sources
                                               ignore-definitions
-                                              ignore-sources)
+                                              ignore-sources
+                                              visibility
+                                              diagnostics-level)
   (declare (ignore inspector))
   (flet ((%stringify (value)
            (when value
@@ -55,7 +57,9 @@
                                    :enforce-sources enforce-sources
                                    :ignore-definitions ignore-definitions
                                    :ignore-sources ignore-sources
-                                   :defines defines)
+                                   :defines defines
+                                   :visibility visibility
+                                   :diagnostics-level diagnostics-level)
       (let ((*translation-unit* unit))
         (call-next-method)))))
 

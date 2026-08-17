@@ -318,7 +318,7 @@
           (setf (uiop:getenv "LC_ALL") lc-all))))))
 
 
-(defun list-system-paths (language triple features)
+(defun list-system-paths (language triple features system-include-type)
   (flet ((%process-paths (paths)
            (mapcar (lambda (path)
                      (uiop:native-namestring (uiop:truename* path)))
@@ -339,8 +339,12 @@
         (unwind-protect
              (%process-paths
               (cond
-                ((not (emptyp (dump-gcc-version clang-name)))
+                ((and (member system-include-type '(:default :clang))
+                      (not (emptyp (dump-gcc-version clang-name))))
                  (dump-include-paths lang clang-name triple))
+                ((eq system-include-type :clang)
+                 (error "system-include-type is :clang, but ~A is not on $PATH"
+                        clang-name))
 
                 ((windows-target-p)
                  (if (not (emptyp (dump-gcc-version (string+ "x86_64-w64-mingw32-" gcc-name))))
@@ -352,9 +356,9 @@
             (setf (uiop:getenv "LC_ALL") lc-all)))))))
 
 
-(defun list-system-include-paths (language triple features)
+(defun list-system-include-paths (language triple features system-include-type)
   (remove-if #'%darwin-framework-path-p
-             (list-system-paths language triple features)))
+             (list-system-paths language triple features system-include-type)))
 
 
 (defun list-default-resource-paths ()
@@ -363,12 +367,12 @@
       (list resource-path))))
 
 
-(defun list-framework-paths (language triple features)
+(defun list-framework-paths (language triple features system-include-type)
   (flet ((cut-darwin-postfix (path)
            (subseq path 0 (- (length path) (length +stupid-darwin-framework-postfix+)))))
     (mapcar #'cut-darwin-postfix
             (remove-if (complement #'%darwin-framework-path-p)
-                       (list-system-paths language triple features)))))
+                       (list-system-paths language triple features system-include-type)))))
 
 (defun dump-gcc-version (&optional (executable "gcc"))
   (handler-case

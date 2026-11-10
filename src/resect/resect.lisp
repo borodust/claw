@@ -318,7 +318,7 @@
 
 (defun make-declaration-location (declaration)
   (let* ((location (%resect:declaration-location declaration))
-	 (pathname (uiop:ensure-pathname (%resect:location-name location))))
+         (pathname (uiop:ensure-pathname (%resect:location-name location))))
     (make-instance 'foreign-location
                    :path (pathname (enough-namestring pathname (claw.wrapper::map-path "")))
                    :line (%resect:location-line location)
@@ -1052,6 +1052,19 @@
                          :mangled (%resect:declaration-mangled-name decl)
                          :location (make-declaration-location decl)
                          :enveloped enveloped)
+      ;; Given `typedef struct { ... } foo;' -- note the absence of a struct tag -- we want
+      ;; to use "foo" as the name of the type, but we have to note that we're doing so, so in
+      ;; codegen, we know whether to say `struct foo' or just `foo'.  (In C++, we could mostly
+      ;; get away with always saying `foo', but (a) this doesn't work in C and (b) it doesn't
+      ;; always work in C++ either -- there could be a function `foo' in the same scope.)
+      ;;
+      ;; Libclang actually gives us "foo" as the decl name, which is how this previously worked,
+      ;; but we're now blocking that behavior in libresect -- because we couldn't always tell when
+      ;; it was being done -- and doing it ourselves here.
+      (when (and (or (typep enveloped 'foreign-record) (typep enveloped 'foreign-enum))
+                 (null (foreign-entity-name enveloped)))
+        (setf (foreign-entity-name enveloped) (foreign-entity-name entity))
+        (setf (foreign-type-name-is-typedef-p enveloped) t))
       (when (and registeredp owner)
         (add-dependent owner entity))
       (find-instantiated-type-from-owner entity))))

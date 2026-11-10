@@ -26,6 +26,7 @@
            #:foreign-entity-bit-alignment
 
            #:foreign-plain-old-data-type-p
+           #:foreign-type-name-is-typedef-p
            #:foreign-type-assignable-p
            #:foreign-type-copy-constructible-p
 
@@ -138,7 +139,9 @@
 (defclass named ()
   ((name :initform nil
          :type (or null string)
-         :reader foreign-entity-name)
+     ;; Setting the name after initialization is mostly to be avoided, but there is
+     ;; one case where we want to.  See `name-is-typedef-p' below.
+         :accessor foreign-entity-name)
    (namespace :initarg :namespace
               :initform nil
               :type (or null string)
@@ -277,7 +280,13 @@
 (defclass foreign-type (aligned identified named foreign-entity)
   ((plain-old-data-type-p :initarg :plain-old-data-type
                           :initform nil
-                          :reader foreign-plain-old-data-type-p)))
+                          :reader foreign-plain-old-data-type-p)
+   ;; If true, the type has taken its name from a typedef, not a tag, so it must be referred
+   ;; to without a keyword (`struct', `class', `union', or `enum').  This is for cases like
+   ;; `typedef struct { ... } foo;'.
+   (name-is-typedef-p :initarg :name-is-typedef
+                      :initform nil
+                      :accessor foreign-type-name-is-typedef-p)))
 
 (defgeneric foreign-type-assignable-p (foreign-type))
 
@@ -788,7 +797,7 @@
 (defmethod format-foreign-entity-c-name ((this foreign-struct)
                                          &key const-qualified name (tag-types *tag-types*))
   (format-default-c-name (format nil "~@[~A ~]~A"
-                                 (when tag-types
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
                                    "struct")
                                  (format-full-foreign-entity-name this))
                          const-qualified name))
@@ -797,7 +806,7 @@
 (defmethod format-foreign-entity-c-name ((this foreign-union)
                                          &key const-qualified name (tag-types *tag-types*))
   (format-default-c-name (format nil "~@[~A ~]~A"
-                                 (when tag-types
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
                                    "union")
                                  (format-full-foreign-entity-name this))
                          const-qualified name))
@@ -806,14 +815,19 @@
 (defmethod format-foreign-entity-c-name ((this foreign-enum)
                                          &key const-qualified name (tag-types *tag-types*))
   (format-default-c-name (format nil "~@[~A ~]~A"
-                                 (when tag-types
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
                                    "enum")
                                  (format-full-foreign-entity-name this))
                          const-qualified name))
 
 
-(defmethod format-foreign-entity-c-name ((this foreign-class) &key const-qualified name)
-  (format-default-c-name (format nil "~A" (format-full-foreign-entity-name this)) const-qualified name))
+(defmethod format-foreign-entity-c-name ((this foreign-class)
+                                         &key const-qualified name (tag-types *tag-types*))
+  (format-default-c-name (format nil "~@[~A ~]~A"
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
+                                   "class")
+                                 (format-full-foreign-entity-name this))
+                         const-qualified name))
 
 
 (defmethod format-foreign-entity-c-name ((this foreign-alias) &key const-qualified name)

@@ -26,8 +26,8 @@
            #:foreign-entity-bit-alignment
 
            #:foreign-plain-old-data-type-p
-	   #:foreign-type-assignable-p
-	   #:foreign-type-copy-constructible-p
+           #:foreign-type-assignable-p
+           #:foreign-type-copy-constructible-p
 
            #:foreign-entity-location
 

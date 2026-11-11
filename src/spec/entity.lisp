@@ -26,6 +26,9 @@
            #:foreign-entity-bit-alignment
 
            #:foreign-plain-old-data-type-p
+           #:foreign-type-name-is-typedef-p
+           #:foreign-type-assignable-p
+           #:foreign-type-copy-constructible-p
 
            #:foreign-entity-location
 
@@ -136,7 +139,9 @@
 (defclass named ()
   ((name :initform nil
          :type (or null string)
-         :reader foreign-entity-name)
+     ;; Setting the name after initialization is mostly to be avoided, but there is
+     ;; one case where we want to.  See `name-is-typedef-p' below.
+         :accessor foreign-entity-name)
    (namespace :initarg :namespace
               :initform nil
               :type (or null string)
@@ -275,13 +280,29 @@
 (defclass foreign-type (aligned identified named foreign-entity)
   ((plain-old-data-type-p :initarg :plain-old-data-type
                           :initform nil
-                          :reader foreign-plain-old-data-type-p)))
+                          :reader foreign-plain-old-data-type-p)
+   ;; If true, the type has taken its name from a typedef, not a tag, so it must be referred
+   ;; to without a keyword (`struct', `class', `union', or `enum').  This is for cases like
+   ;; `typedef struct { ... } foo;'.
+   (name-is-typedef-p :initarg :name-is-typedef
+                      :initform nil
+                      :accessor foreign-type-name-is-typedef-p)))
+
+(defgeneric foreign-type-assignable-p (foreign-type))
+
+(defgeneric foreign-type-copy-constructible-p (foreign-type))
 
 
 ;;;
 ;;; PRIMITIVE
 ;;;
 (defclass foreign-primitive (foreign-type) ())
+
+(defmethod foreign-type-assignable-p ((type foreign-primitive))
+  t)
+
+(defmethod foreign-type-copy-constructible-p ((type foreign-primitive))
+  t)
 
 
 ;;;
@@ -303,6 +324,13 @@
    (type :initarg :type
          :initform nil
          :reader foreign-enum-type)))
+
+(defmethod foreign-type-assignable-p ((type foreign-enum))
+  t)
+
+(defmethod foreign-type-copy-constructible-p ((type foreign-enum))
+  t)
+
 
 ;;;
 ;;; TEMPLATABLE
@@ -409,7 +437,45 @@
               :reader foreign-entity-private-p)
    (forward-p :initarg :forward
               :initform nil
-              :reader foreign-entity-forward-p)))
+              :reader foreign-entity-forward-p)
+   (has-explicit-assignment-p :initarg :explicit-assignment
+			      :initform nil
+			      :reader foreign-record-has-explicit-assignment-p)
+   (has-deleted-assignment-p :initarg :deleted-assignment
+			     :initform nil
+			     :reader foreign-record-has-deleted-assignment-p)
+   (has-explicit-copy-constructor-p :initarg :explicit-copy-constructor
+				    :initform nil
+				    :reader foreign-record-has-explicit-copy-constructor-p)
+   (has-deleted-copy-constructor-p :initarg :deleted-copy-constructor
+				   :initform nil
+				   :reader foreign-record-has-deleted-copy-constructor-p)))
+
+(defmethod foreign-type-assignable-p ((record foreign-record))
+  (and (not (foreign-record-has-deleted-assignment-p record))
+       (or (foreign-record-has-explicit-assignment-p record)
+	   (and (every (lambda (field)
+			 (let ((field-type (foreign-enveloped-entity field)))
+			   ;; You can normally assign through a non-const reference, but
+			   ;; C++ won't generate an implicit assignment operator that
+			   ;; assigns to a reference field.
+			   (or (and (foreign-type-assignable-p field-type)
+				    (not (typep field-type 'foreign-reference)))
+			       ;; Top-level arrays are not assignable, but as fields of records
+			       ;; they become so, if their element type is.
+			       (and (typep field-type 'foreign-array)
+				    (foreign-type-assignable-p (foreign-enveloped-entity field-type))))))
+		       (foreign-record-fields record))
+		(every #'foreign-type-assignable-p (foreign-record-parents record))))))
+
+(defmethod foreign-type-copy-constructible-p ((record foreign-record))
+  (and (not (foreign-record-has-deleted-copy-constructor-p record))
+       (or (foreign-record-has-explicit-copy-constructor-p record)
+	   (and (every (compose #'foreign-type-copy-constructible-p
+				#'foreign-enveloped-entity)
+		       (foreign-record-fields record))
+		(every #'foreign-type-copy-constructible-p
+		       (foreign-record-parents record))))))
 
 
 (defmethod foreign-entity-forward-p (any)
@@ -448,6 +514,13 @@
    (variadic-p :initarg :variadic
                :initform nil
                :reader foreign-function-variadic-p)))
+
+
+(defmethod foreign-type-assignable-p ((proto foreign-function-prototype))
+  nil)
+
+(defmethod foreign-type-copy-constructible-p ((proto foreign-function-prototype))
+  nil)
 
 
 (defclass foreign-function (declared
@@ -496,6 +569,12 @@
                  :location (foreign-entity-location entity)
                  :enveloped value))
 
+(defmethod foreign-type-assignable-p ((alias foreign-alias))
+  (foreign-type-assignable-p (foreign-enveloped-entity alias)))
+
+(defmethod foreign-type-copy-constructible-p ((alias foreign-alias))
+  (foreign-type-copy-constructible-p (foreign-enveloped-entity alias)))
+
 
 ;;;
 ;;; ARRAY
@@ -516,6 +595,13 @@
                  :dimensions (foreign-array-dimensions entity)
                  :enveloped value))
 
+(defmethod foreign-type-assignable-p ((array foreign-array))
+  ;; Top-level arrays are not assignable, but see the method on `foreign-record'.
+  nil)
+
+(defmethod foreign-type-copy-constructible-p ((array foreign-array))
+  (foreign-type-copy-constructible-p (foreign-enveloped-entity array)))
+
 
 ;;;
 ;;; POINTER
@@ -525,6 +611,13 @@
 
 (defmethod rewrap-foreign-envelope ((entity foreign-pointer) value)
   (make-instance 'foreign-pointer :enveloped value))
+
+(defmethod foreign-type-assignable-p ((pointer foreign-pointer))
+  t)
+
+(defmethod foreign-type-copy-constructible-p ((pointer foreign-pointer))
+  t)
+
 
 ;;;
 ;;; REFERENCE
@@ -539,6 +632,16 @@
   (make-instance 'foreign-reference
                  :rvalue (foreign-reference-rvalue-p entity)
                  :enveloped value))
+
+(defmethod foreign-type-assignable-p ((reference foreign-reference))
+  (foreign-type-assignable-p (foreign-enveloped-entity reference)))
+
+(defmethod foreign-type-copy-constructible-p ((reference foreign-reference))
+  ;; Technically, lvalue references aren't constructed, but as field types they don't prevent
+  ;; the containing record from being copy-constructible.
+  ;; Rvalue references can't be field types, but they also can't be copied.
+  (not (foreign-reference-rvalue-p reference)))
+
 
 ;;;
 ;;; VARIABLE
@@ -565,6 +668,11 @@
 ;;;
 (defclass foreign-const-qualifier (foreign-qualifier) ())
 
+(defmethod foreign-type-assignable-p ((qual foreign-const-qualifier))
+  nil)
+
+(defmethod foreign-type-copy-constructible-p ((qual foreign-const-qualifier))
+  (foreign-type-copy-constructible-p (foreign-enveloped-entity qual)))
 
 ;;;
 ;;; UNKNOWN
@@ -689,7 +797,7 @@
 (defmethod format-foreign-entity-c-name ((this foreign-struct)
                                          &key const-qualified name (tag-types *tag-types*))
   (format-default-c-name (format nil "~@[~A ~]~A"
-                                 (when tag-types
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
                                    "struct")
                                  (format-full-foreign-entity-name this))
                          const-qualified name))
@@ -698,7 +806,7 @@
 (defmethod format-foreign-entity-c-name ((this foreign-union)
                                          &key const-qualified name (tag-types *tag-types*))
   (format-default-c-name (format nil "~@[~A ~]~A"
-                                 (when tag-types
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
                                    "union")
                                  (format-full-foreign-entity-name this))
                          const-qualified name))
@@ -707,14 +815,19 @@
 (defmethod format-foreign-entity-c-name ((this foreign-enum)
                                          &key const-qualified name (tag-types *tag-types*))
   (format-default-c-name (format nil "~@[~A ~]~A"
-                                 (when tag-types
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
                                    "enum")
                                  (format-full-foreign-entity-name this))
                          const-qualified name))
 
 
-(defmethod format-foreign-entity-c-name ((this foreign-class) &key const-qualified name)
-  (format-default-c-name (format nil "~A" (format-full-foreign-entity-name this)) const-qualified name))
+(defmethod format-foreign-entity-c-name ((this foreign-class)
+                                         &key const-qualified name (tag-types *tag-types*))
+  (format-default-c-name (format nil "~@[~A ~]~A"
+                                 (when (and tag-types (not (foreign-type-name-is-typedef-p this)))
+                                   "class")
+                                 (format-full-foreign-entity-name this))
+                         const-qualified name))
 
 
 (defmethod format-foreign-entity-c-name ((this foreign-alias) &key const-qualified name)

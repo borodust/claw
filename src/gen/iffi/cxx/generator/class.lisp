@@ -42,16 +42,10 @@
 
 (defun adapt-setter (record field)
   (let* ((field-name (claw.spec:foreign-entity-name field))
-         (original-type (claw.spec:foreign-enveloped-entity field))
-         (unaliased (claw.spec:unalias-foreign-entity original-type)))
-    (multiple-value-bind (field-type adapted-p)
-        (adapt-type original-type)
-      (unless (or (typep unaliased 'claw.spec:foreign-array)
-                  (typep (if (or (typep unaliased 'claw.spec:foreign-pointer)
-                                 (typep unaliased 'claw.spec:foreign-reference))
-                             (claw.spec:foreign-enveloped-entity unaliased)
-                             unaliased)
-                         'claw.spec:foreign-const-qualifier))
+         (original-type (claw.spec:foreign-enveloped-entity field)))
+    (when (claw.spec:foreign-type-assignable-p original-type)
+      (multiple-value-bind (field-type adapted-p)
+          (adapt-type original-type)
         (make-instance 'adapted-function
                        :name (format nil "set_~A_~A"
                                      (mangle-entity-name record)

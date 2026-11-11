@@ -317,9 +317,10 @@
 
 
 (defun make-declaration-location (declaration)
-  (let ((location (%resect:declaration-location declaration)))
+  (let* ((location (%resect:declaration-location declaration))
+         (pathname (uiop:ensure-pathname (%resect:location-name location))))
     (make-instance 'foreign-location
-                   :path (uiop:ensure-pathname (%resect:location-name location))
+                   :path (pathname (enough-namestring pathname (claw.wrapper::map-path "")))
                    :line (%resect:location-line location)
                    :column (%resect:location-column location))))
 
@@ -501,6 +502,16 @@
   (:method ((this resect-record) dependent)
     (with-slots (deps) this
       (push dependent deps))))
+
+(defmethod foreign-type-assignable-p ((record resect-record))
+  (and (call-next-method)
+       ;; For templates like `std::optional', `std::vector', etc., we don't see the class
+       ;; declaration, but it's a pretty safe assumption that an instantiation includes at least
+       ;; one field of the argument type.
+       (every (lambda (arg)
+                (or (not (typep (foreign-entity-parameter arg) 'foreign-entity-type-parameter))
+                    (foreign-type-assignable-p (foreign-entity-value arg))))
+              (arguments-of record))))
 
 (defclass resect-struct (resect-record foreign-struct) ())
 
@@ -798,6 +809,11 @@
                              :bit-size (%resect:type-size decl-type)
                              :bit-alignment (%resect:type-alignment decl-type)
                              :plain-old-data-type (%resect:type-plain-old-data-p decl-type)
+                             :explicit-copy-constructor (%resect:type-has-copy-constructor-p decl-type)
+                             :deleted-copy-constructor (%resect:type-copy-constructor-deleted-p decl-type)
+                             ;; Move assigment ops don't matter for our purposes.
+                             :explicit-assignment (%resect:type-has-copy-assignment-p decl-type)
+                             :deleted-assignment (%resect:type-copy-assignment-deleted-p decl-type)
                              :abstract (%resect:record-abstract-p decl)
                              :private (or (foreign-entity-private-p owner)
                                           (not (publicp decl))
@@ -1036,6 +1052,19 @@
                          :mangled (%resect:declaration-mangled-name decl)
                          :location (make-declaration-location decl)
                          :enveloped enveloped)
+      ;; Given `typedef struct { ... } foo;' -- note the absence of a struct tag -- we want
+      ;; to use "foo" as the name of the type, but we have to note that we're doing so, so in
+      ;; codegen, we know whether to say `struct foo' or just `foo'.  (In C++, we could mostly
+      ;; get away with always saying `foo', but (a) this doesn't work in C and (b) it doesn't
+      ;; always work in C++ either -- there could be a function `foo' in the same scope.)
+      ;;
+      ;; Libclang actually gives us "foo" as the decl name, which is how this previously worked,
+      ;; but we're now blocking that behavior in libresect -- because we couldn't always tell when
+      ;; it was being done -- and doing it ourselves here.
+      (when (and (or (typep enveloped 'foreign-record) (typep enveloped 'foreign-enum))
+                 (null (foreign-entity-name enveloped)))
+        (setf (foreign-entity-name enveloped) (foreign-entity-name entity))
+        (setf (foreign-type-name-is-typedef-p enveloped) t))
       (when (and registeredp owner)
         (add-dependent owner entity))
       (find-instantiated-type-from-owner entity))))
